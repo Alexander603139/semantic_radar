@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.log
+*.db
+*.sqlite3
+.coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Виртуальное окружение
+venv/
+env/
+.venv/
+
+# Переменные окружения и секреты
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+
+# Данные (монтируемый том, не храним в репозитории)
+data/
+!data/.gitkeep          # опционально: чтобы сохранить пустую папку
+
+# Результаты работы (отчёты, файлы векторов, кластеры)
+reports/
+*.parquet
+*.npy
+*.html
+
+# IDE и редакторы
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Docker
+.dockerignore
+docker-compose.override.yml   # локальные переопределения
+
+# Системные файлы
+Thumbs.db
+.DS_Store
