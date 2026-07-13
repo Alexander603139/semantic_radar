@@ -1,35 +1,58 @@
-import asyncio
-import json
-import os
-from datetime import datetime
-from .config import SOURCES, OUTPUT_DIR
-from .parser import fetch_articles_from_source
 import logging
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException, BackgroundTasks
+from .config import PORT
+from .models import RunRequest, RunResponse, TaskStatusResponse
+from .tasks import run_parsing_task, tasks_store
+from .scheduler import init_scheduler
 
-# Настройка логирования
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-async def save_articles(articles, source_name):
-    """Сохраняет список статей в один JSON-файл по источнику и дате."""
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
-    date_str = datetime.now().strftime('%Y-%m-%d')
-    filename = f"{source_name}_{date_str}.json"
-    filepath = os.path.join(OUTPUT_DIR, filename)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Старт планировщика при запуске приложения
+    init_scheduler()
+    logger.info("Ingestor service started")
+    yield
+    # Здесь можно добавить остановку планировщика, если нужно
+    logger.info("Ingestor service shutting down")
 
-    data = [article.model_dump(mode='json', exclude_none=True) for article in articles]
-    with open(filepath, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2, default=str)
-    print(f"Сохранено {len(articles)} статей в {filepath}")
+app = FastAPI(lifespan=lifespan)
 
-async def main():
-    print("Запуск ingestor (асинхронный)...")
-    for source in SOURCES:
-        articles = await fetch_articles_from_source(source, limit=5)  # по 5 для теста
-        if articles:
-            await save_articles(articles, source.split('/')[2])
-        else:
-            print(f"Не удалось извлечь статьи из {source}")
+@app.post("/run", response_model=RunResponse)
+async def run_parser(request: RunRequest, background_tasks: BackgroundTasks):
+    """
+    Запускает парсинг для переданного списка сайтов.
+    Возвращает task_id для отслеживания статуса.
+    """
+    if not request.sources:
+        raise HTTPException(status_code=400, detail="Список источников не может быть пустым")
+    # Запускаем задачу в фоне
+    task_id = await run_parsing_task(
+        user_id=request.user_id,
+        sources=request.sources,
+        limit=request.limit
+    )
+    return RunResponse(task_id=task_id, status="started", message="Задача поставлена в очередь")
+
+@app.get("/status/{task_id}", response_model=TaskStatusResponse)
+async def get_status(task_id: str):
+    """Возвращает статус задачи"""
+    if task_id not in tasks_store:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+    info = tasks_store[task_id]
+    return TaskStatusResponse(
+        task_id=task_id,
+        status=info["status"],
+        result=info.get("result"),
+        error=info.get("error")
+    )
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=PORT)
