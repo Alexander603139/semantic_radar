@@ -16,6 +16,7 @@ DEFAULT_TIMEOUT = 30.0
 
 # Планировщик (по умолчанию – каждое воскресенье в 5:00)
 SCHEDULE_CRON = "0 5 * * 0"   # cron-строка
+# SCHEDULE_CRON = "* * * * *"   # каждую минуту. для тестов
 
 # URL для вызова embedder (внутри Docker-сети)
 EMBEDDER_URL = os.getenv("EMBEDDER_URL", "http://embedder:8002/embed")

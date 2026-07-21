@@ -7,7 +7,6 @@ class Article(BaseModel):
     url: str
     title: str
     body: str
-    author: Optional[str] = None
     published_at: Optional[datetime] = None
     scraped_at: datetime = datetime.now()
 

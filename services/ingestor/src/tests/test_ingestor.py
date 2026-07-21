@@ -4,8 +4,8 @@ import json
 
 TEST_SOURCES = [
     "https://lenta.ru",
-    "https://ria.ru",
-    "https://tass.ru"
+    # "https://ria.ru",
+    # "https://tass.ru"
 ]
 LIMIT = 2   # для теста берём по 2 статьи
 
