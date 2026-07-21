@@ -210,8 +210,10 @@ def is_article_url(url: str) -> bool:
     excluded = ['#', '?', 'search', 'tag', 'category', 'contact', 'about', 'login', 'register', 'feed', 'sitemap', 'javascript:']
     if any(x in url.lower() for x in excluded):
         return False
-    # Если ссылка не пустая и не главная страница — считаем статьёй
-    return True
+    for pattern in ARTICLE_URL_PATTERNS:
+        if re.search(pattern, url):
+            return True
+    return False
 
 async def get_article_links_from_rss(source_url: str, client: httpx.AsyncClient) -> List[str]:
     rss_paths = ['/rss', '/feed', '/rss.xml', '/feed.xml', '/xml']
@@ -239,13 +241,16 @@ async def get_article_links_from_rss(source_url: str, client: httpx.AsyncClient)
     return []
 
 async def get_article_links_from_html(source_url: str, client: httpx.AsyncClient) -> List[str]:
+    # 1. Сначала пробуем стандартный fetch_html (httpx, при ошибке — playwright)
     html_content = await fetch_html(source_url, client)
     if not html_content:
-        # Если fetch_html вернул None, пробуем playwright принудительно
+        # Если совсем ничего нет, пробуем playwright принудительно
         logger.info(f"    fetch_html не дал результат, пробуем playwright для главной {source_url}")
         html_content = await fetch_html_playwright(source_url)
         if not html_content:
             return []
+
+    # 2. Извлекаем ссылки из HTML
     tree = lxml_html.fromstring(html_content)
     links = tree.xpath("//a/@href")
     base_domain = urlparse(source_url).netloc
@@ -257,6 +262,28 @@ async def get_article_links_from_html(source_url: str, client: httpx.AsyncClient
     unique = list(dict.fromkeys(full_links))
     article_links = [url for url in unique if is_article_url(url)]
     logger.info(f"    Найдено ссылок на статьи: {len(article_links)}")
+
+    # 3. Если ссылок слишком мало (меньше 3) — сайт, вероятно, динамический,
+    #    принудительно рендерим через Playwright и повторяем сбор.
+    if len(article_links) < 3:
+        logger.info("    Мало ссылок, пробуем через Playwright с рендерингом")
+        html_pw = await fetch_html_playwright(source_url)
+        if html_pw:
+            tree_pw = lxml_html.fromstring(html_pw)
+            links_pw = tree_pw.xpath("//a/@href")
+            full_links_pw = []
+            for link in links_pw:
+                full_url = urljoin(source_url, link)
+                if base_domain in full_url:
+                    full_links_pw.append(full_url)
+            unique_pw = list(dict.fromkeys(full_links_pw))
+            article_links_pw = [url for url in unique_pw if is_article_url(url)]
+            if article_links_pw:
+                logger.info(f"    После рендеринга найдено ссылок: {len(article_links_pw)}")
+                article_links = article_links_pw
+            else:
+                logger.info("    Рендеринг не дал новых ссылок, оставляем оригинальный список")
+
     return article_links
 
 async def get_article_links(source_url: str, client: httpx.AsyncClient) -> List[str]:
