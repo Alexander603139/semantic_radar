@@ -5,7 +5,7 @@ from typing import List
 import logging
 from .parser import fetch_articles_from_source
 from .models import Article
-from .config import OUTPUT_DIR
+from .settings import settings
 from .embedder_client import call_embedder
 import json
 import os
@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 
 # Хранилище статусов задач (в памяти, для прототипа)
 tasks_store = {}
+
+OUTPUT_DIR = settings.OUTPUT_DIR
 
 async def run_parsing_task(user_id: str, sources: List[str], limit: int) -> str:
     task_id = str(uuid.uuid4())

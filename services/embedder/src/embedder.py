@@ -7,13 +7,18 @@ import pyarrow.parquet as pq
 from sentence_transformers import SentenceTransformer
 from datetime import datetime
 from typing import List, Dict, Any
-from .config import MODEL_NAME, VECTORS_ROOT, CHUNK_SIZE, CHUNK_OVERLAP
+from .settings import settings
 from .models import Article
 
 logger = logging.getLogger(__name__)
 
 # Глобальный объект модели (загружается один раз при старте)
 _model = None
+
+MODEL_NAME = settings.MODEL_NAME
+VECTORS_ROOT = settings.VECTORS_ROOT
+CHUNK_SIZE = settings.CHUNK_SIZE
+CHUNK_OVERLAP = settings.CHUNK_OVERLAP
 
 def load_model():
     global _model

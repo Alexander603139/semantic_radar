@@ -1,7 +1,7 @@
 import logging
 from fastapi import FastAPI
 from .routes import router
-from .config import PORT
+from .settings import settings
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -15,4 +15,4 @@ async def health():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=PORT)
+    uvicorn.run(app, host="0.0.0.0", port=settings.PORT)

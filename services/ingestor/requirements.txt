@@ -8,3 +8,4 @@ lxml==6.1.1
 pydantic==2.13.4
 apscheduler==3.10.4
 python-multipart==0.0.12
+pydantic-settings==2.3.0

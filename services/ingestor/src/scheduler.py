@@ -1,10 +1,13 @@
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 import logging
-from .config import SCHEDULE_CRON, SOURCES
+from .settings import settings
 from .tasks import run_parsing_task
 
 logger = logging.getLogger(__name__)
+
+SCHEDULE_CRON = settings.SCHEDULE_CRON
+SOURCES = settings.SOURCES
 
 scheduler = AsyncIOScheduler()
 

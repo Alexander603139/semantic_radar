@@ -1,8 +1,11 @@
 import httpx
 import logging
-from .config import EMBEDDER_URL, EMBEDDER_MOCK
+from .settings import settings
 
 logger = logging.getLogger(__name__)
+
+EMBEDDER_URL = settings.EMBEDDER_URL
+EMBEDDER_MOCK = settings.EMBEDDER_MOCK
 
 async def call_embedder(user_id: str, articles: list) -> bool:
     """

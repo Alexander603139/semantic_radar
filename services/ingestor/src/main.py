@@ -1,10 +1,12 @@
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, BackgroundTasks
-from .config import PORT
+from .settings import settings
 from .models import RunRequest, RunResponse, TaskStatusResponse
 from .tasks import run_parsing_task, tasks_store
 from .scheduler import init_scheduler
+from dotenv import load_dotenv
+load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -55,4 +57,4 @@ async def health():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=PORT)
+    uvicorn.run(app, host="0.0.0.0", port=settings.PORT)

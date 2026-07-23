@@ -12,13 +12,11 @@ from lxml import html as lxml_html
 from lxml import etree
 
 from .models import Article
-from .config import (
-    SOURCES,
-    OUTPUT_DIR,
-    SKIP_EXTENSIONS,
-    ARTICLE_URL_PATTERNS,
-    MIN_TEXT_LENGTH,
-)
+from .settings import settings
+SOURCES = settings.SOURCES
+OUTPUT_DIR = settings.OUTPUT_DIR
+SKIP_EXTENSIONS = settings.SKIP_EXTENSIONS
+MIN_TEXT_LENGTH = settings.MIN_TEXT_LENGTH
 
 # --------------------- Логгер ---------------------
 logger = logging.getLogger(__name__)
