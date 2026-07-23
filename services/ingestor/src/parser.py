@@ -17,6 +17,7 @@ SOURCES = settings.SOURCES
 OUTPUT_DIR = settings.OUTPUT_DIR
 SKIP_EXTENSIONS = settings.SKIP_EXTENSIONS
 MIN_TEXT_LENGTH = settings.MIN_TEXT_LENGTH
+ARTICLE_URL_PATTERNS = settings.ARTICLE_URL_PATTERNS   # <-- добавлено
 
 # --------------------- Логгер ---------------------
 logger = logging.getLogger(__name__)
@@ -100,7 +101,6 @@ async def fetch_html(url: str, client: httpx.AsyncClient) -> Optional[str]:
     html = await fetch_html_httpx(url, client)
     if html is not None:
         return html
-    # Если httpx вернул None (любая ошибка), пробуем playwright
     logger.info(f"  httpx не дал результат, пробуем playwright для {url}")
     return await fetch_html_playwright(url)
 
@@ -198,7 +198,7 @@ async def parse_article(url: str, client: httpx.AsyncClient) -> Optional[Article
         scraped_at=datetime.now()
     )
 
-# --------------------- Сбор ссылок (упрощённый фильтр) ---------------------
+# --------------------- Сбор ссылок ---------------------
 
 def is_article_url(url: str) -> bool:
     # Исключаем медиафайлы
