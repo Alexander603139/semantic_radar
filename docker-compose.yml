@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  embedder:
+    build: ./services/embedder
+    container_name: embedder
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models          # монтируем локальную папку с моделью
+    environment:
+      - MODEL_NAME=/app/models/all-MiniLM-L6-v2
+      - VECTORS_ROOT=/app/data/vectors
+      - PORT=8002
+    networks:
+      - semantic-net
+
+  ingestor:
+    build: ./services/ingestor
+    container_name: ingestor
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - EMBEDDER_URL=http://embedder:8002/embed
+      - EMBEDDER_MOCK=False
+      - PORT=8001
+      - SCHEDULE_CRON=* * * * *        # для теста каждую минуту (потом замените)
+    depends_on:
+      - embedder
+    networks:
+      - semantic-net
+
+networks:
+  semantic-net:
+    driver: bridge
