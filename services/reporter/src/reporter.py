@@ -16,6 +16,8 @@ def generate_report(user_id: str, analysis_data: Dict[str, Any]) -> str:
     Генерирует HTML-отчёт на основе данных анализа.
     Сохраняет файл в reports/{user_id}/ и возвращает путь.
     """
+    logger.info("Начало генерации отчёта")
+
     # Создаём папку пользователя
     user_reports_dir = os.path.join(settings.REPORTS_ROOT, f"user_{user_id}")
     os.makedirs(user_reports_dir, exist_ok=True)
@@ -31,11 +33,17 @@ def generate_report(user_id: str, analysis_data: Dict[str, Any]) -> str:
     cluster_details = analysis_data.get("cluster_details", {})
 
     # Строим графики
+    logger.info("Строим спидометр")
     fig_drift = create_drift_gauge(drift_score)
+
+    logger.info("Строим кластеры")
     fig_clusters = create_cluster_visualization(cluster_details)
+
+    logger.info("Строим таблицу")
     table_html = create_shifted_topics_table(shifted_topics)
 
     # Формируем HTML-страницу
+    logger.info("Собираем HTML")
     html_content = build_html_page(
         user_id=user_id,
         drift_fig=fig_drift,
@@ -45,10 +53,11 @@ def generate_report(user_id: str, analysis_data: Dict[str, Any]) -> str:
     )
 
     # Сохраняем
+    logger.info(f"Сохраняем в {filepath}")
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(html_content)
 
-    logger.info(f"Отчёт сохранён: {filepath}")
+    logger.info(f"Анализ: {analysis_data.keys()}")
     return filepath
 
 def create_drift_gauge(drift_score: float) -> go.Figure:

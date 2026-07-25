@@ -5,6 +5,6 @@ torch==2.3.0
 pydantic==2.13.4
 pyarrow==25.0.0
 pandas==2.2.0
-numpy==1.26.0
+numpy==1.26.4   # добавляем для единообразия
 python-multipart==0.0.12
 pydantic-settings==2.14.2
