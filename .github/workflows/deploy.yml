@@ -2,7 +2,7 @@ name: Deploy to Timeweb
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  
+
 on:
   push:
     branches: [ main ]
@@ -47,4 +47,4 @@ jobs:
 
             # Очистка неиспользуемых образов
             docker image prune -f
-          timeout: 1800s   # 30 минут
+          timeout: 1800s  # 30 минут
