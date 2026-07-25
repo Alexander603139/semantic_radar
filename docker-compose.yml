@@ -1,60 +1,73 @@
 services:
   embedder:
-    build: ./services/embedder
+    build:
+      context: .
+      dockerfile: services/embedder/Dockerfile
     container_name: embedder
+    restart: unless-stopped
     ports:
       - "8004:8002"
     volumes:
       - ./data:/app/data
       - ./models:/app/models          # монтируем локальную папку с моделью
     environment:
-      - MODEL_NAME=/app/models/all-MiniLM-L6-v2
-      - VECTORS_ROOT=/app/data/vectors
-      - PORT=8002
+      MODEL_NAME: /app/models/all-MiniLM-L6-v2
+      VECTORS_ROOT: /app/data/vectors
+      PORT: 8002
     networks:
       - semantic-net
 
   ingestor:
-    build: ./services/ingestor
+    build:
+      context: .
+      dockerfile: services/ingestor/Dockerfile
     container_name: ingestor
+    restart: unless-stopped
     ports:
       - "8003:8001"
     volumes:
       - ./data:/app/data
     environment:
-      - EMBEDDER_URL=http://embedder:8002/embed
-      - EMBEDDER_MOCK=False
-      - PORT=8001
-      - SCHEDULE_CRON=* * * * *        # для теста каждую минуту (потом замените)
+      EMBEDDER_URL: http://embedder:8002/embed
+      EMBEDDER_MOCK: "False"
+      PORT: 8001
+      SCHEDULE_CRON: "* * * * *"   # для теста каждую минуту, потом замените
     depends_on:
       - embedder
     networks:
       - semantic-net
 
   analyzer:
-    build: ./services/analyzer
+    build:
+      context: .
+      dockerfile: services/analyzer/Dockerfile
     container_name: analyzer
+    restart: unless-stopped
     ports:
       - "8005:8004"
     volumes:
       - ./data:/app/data
     environment:
-      - VECTORS_ROOT=/app/data/vectors
-      - CLUSTERS_ROOT=/app/data/clusters
-      - PORT=8004
+      VECTORS_ROOT: /app/data/vectors
+      CLUSTERS_ROOT: /app/data/clusters
+      PORT: 8004
     networks:
       - semantic-net
 
   reporter:
-    build: ./services/reporter
+    build:
+      context: .
+      dockerfile: services/reporter/Dockerfile
     container_name: reporter
+    restart: unless-stopped
     ports:
       - "8006:8005"
     volumes:
       - ./data:/app/data
     environment:
-      - REPORTS_ROOT=/app/data/reports
-      - PORT=8005
+      REPORTS_ROOT: /app/data/reports
+      PORT: 8005
+      PLOTLY_TEMPLATE: plotly_white
     networks:
       - semantic-net
 

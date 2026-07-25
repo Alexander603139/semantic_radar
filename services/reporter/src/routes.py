@@ -26,6 +26,8 @@ async def generate_report_endpoint(request: ReportRequest):
         relative_path = os.path.relpath(filepath, start=settings.REPORTS_ROOT)
         report_url = f"/reports/{request.user_id}/{os.path.basename(filepath)}"
 
+        logger.info("Формируем ответ")
+        logger.info(f"Ответ: status=ok, report_url={report_url}, text_summary={text_summary}")
         return ReportResponse(
             status="ok",
             report_url=report_url,

@@ -1,0 +1,50 @@
+name: Deploy to Timeweb
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Copy files to server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.TIMEWEB_HOST }}
+          username: root
+          key: ${{ secrets.TIMEWEB_SSH_KEY }}
+          source: "."
+          target: "/opt/semantic-radar"
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.TIMEWEB_HOST }}
+          username: root
+          key: ${{ secrets.TIMEWEB_SSH_KEY }}
+          script: |
+            cd /opt/semantic-radar
+            
+            # Остановка старых контейнеров
+            docker-compose down
+
+            # Предварительная загрузка тяжёлого образа Playwright (ускоряет сборку ingestor)
+            # Если образ не используется, можно убрать, но оставлено для совместимости
+            docker pull mcr.microsoft.com/playwright/python:v1.46.0-jammy || true
+
+            # Скачивание актуальных образов
+            docker-compose pull
+
+            # Пересборка и запуск контейнеров
+            docker-compose up -d --build
+
+            # Очистка неиспользуемых образов
+            docker image prune -f
+          timeout: 1800s   # 30 минут
