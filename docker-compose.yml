@@ -1,7 +1,7 @@
 services:
   embedder:
     build:
-      context: ./services/embedder
+      context: .
       dockerfile: services/embedder/Dockerfile
     container_name: embedder
     restart: unless-stopped
@@ -9,7 +9,7 @@ services:
       - "8004:8002"
     volumes:
       - ./data:/app/data
-      - ./models:/app/models          # монтируем локальную папку с моделью
+      - ./models:/app/models
     environment:
       MODEL_NAME: /app/models/all-MiniLM-L6-v2
       VECTORS_ROOT: /app/data/vectors
@@ -19,7 +19,7 @@ services:
 
   ingestor:
     build:
-      context: ./services/ingestor
+      context: .
       dockerfile: services/ingestor/Dockerfile
     container_name: ingestor
     restart: unless-stopped
@@ -31,7 +31,7 @@ services:
       EMBEDDER_URL: http://embedder:8002/embed
       EMBEDDER_MOCK: "False"
       PORT: 8001
-      SCHEDULE_CRON: "* * * * *"   # для теста каждую минуту, потом замените
+      SCHEDULE_CRON: "* * * * *"
     depends_on:
       - embedder
     networks:
@@ -39,7 +39,7 @@ services:
 
   analyzer:
     build:
-      context: ./services/analyzer
+      context: .
       dockerfile: services/analyzer/Dockerfile
     container_name: analyzer
     restart: unless-stopped
@@ -56,7 +56,7 @@ services:
 
   reporter:
     build:
-      context: ./services/reporter
+      context: .
       dockerfile: services/reporter/Dockerfile
     container_name: reporter
     restart: unless-stopped
