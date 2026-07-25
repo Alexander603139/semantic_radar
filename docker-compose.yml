@@ -1,7 +1,7 @@
 services:
   embedder:
     build:
-      context: .
+      context: ./services/embedder
       dockerfile: services/embedder/Dockerfile
     container_name: embedder
     restart: unless-stopped
@@ -19,7 +19,7 @@ services:
 
   ingestor:
     build:
-      context: .
+      context: ./services/ingestor
       dockerfile: services/ingestor/Dockerfile
     container_name: ingestor
     restart: unless-stopped
@@ -39,7 +39,7 @@ services:
 
   analyzer:
     build:
-      context: .
+      context: ./services/analyzer
       dockerfile: services/analyzer/Dockerfile
     container_name: analyzer
     restart: unless-stopped
@@ -56,7 +56,7 @@ services:
 
   reporter:
     build:
-      context: .
+      context: ./services/reporter
       dockerfile: services/reporter/Dockerfile
     container_name: reporter
     restart: unless-stopped
