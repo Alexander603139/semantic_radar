@@ -31,6 +31,33 @@ services:
     networks:
       - semantic-net
 
+  analyzer:
+    build: ./services/analyzer
+    container_name: analyzer
+    ports:
+      - "8005:8004"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - VECTORS_ROOT=/app/data/vectors
+      - CLUSTERS_ROOT=/app/data/clusters
+      - PORT=8004
+    networks:
+      - semantic-net
+
+  reporter:
+    build: ./services/reporter
+    container_name: reporter
+    ports:
+      - "8006:8005"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - REPORTS_ROOT=/app/data/reports
+      - PORT=8005
+    networks:
+      - semantic-net
+
 networks:
   semantic-net:
     driver: bridge
