@@ -1,9 +1,6 @@
-FROM python:3.11-slim
+FROM mcr.microsoft.com/playwright/python:v1.46.0-jammy
 
 WORKDIR /app
-
-# Установка Playwright и браузера
-RUN pip install playwright && playwright install chromium
 
 COPY services/ingestor/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
