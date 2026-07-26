@@ -2,6 +2,9 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# CPU-версия PyTorch (не используется напрямую, но может понадобиться как зависимость)
+RUN pip install torch==2.3.0 --index-url https://download.pytorch.org/whl/cpu
+
 COPY services/analyzer/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
