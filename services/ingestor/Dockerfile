@@ -4,6 +4,7 @@ WORKDIR /app
 
 COPY services/ingestor/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install playwright
 
 COPY services/ingestor/src/ ./src/
 
