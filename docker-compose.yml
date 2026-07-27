@@ -31,7 +31,7 @@ services:
       EMBEDDER_URL: http://embedder:8002/embed
       EMBEDDER_MOCK: "False"
       PORT: 8001
-      SCHEDULE_CRON: "* * * * *"
+      SCHEDULE_CRON: "0 5 * * *"
     depends_on:
       - embedder
     networks:

@@ -32,10 +32,9 @@ class Settings(BaseSettings):
     MIN_TEXT_LENGTH: int = 100
     DEFAULT_TIMEOUT: float = 30.0
 
-    # Планировщик (по умолчанию – каждое воскресенье в 5:00)
-    # Для тестов можно изменить на "* * * * *"
-    # SCHEDULE_CRON: str = "0 5 * * 0"
-    SCHEDULE_CRON: str = "* * * * *"
+    # Для тестов можно изменить на "* * * * *" (каждую минуту)
+    SCHEDULE_CRON: str = "0 5 * * *"
+    # SCHEDULE_CRON: str = "* * * * *"
 
     # Настройки интеграции с embedder
     EMBEDDER_URL: str = "http://localhost:8002/embed"
