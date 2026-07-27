@@ -3,14 +3,15 @@ FROM python:3.10-slim
 ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /app
 
-# Системные зависимости (как в успешном проекте)
+# Системные зависимости (добавлен libgomp1 для работы PyTorch/Transformers на CPU)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     wget \
     gnupg \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Установка Python-зависимостей (torch, sentence-transformers и др.)
+# Установка Python-зависимостей
 COPY services/embedder/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
