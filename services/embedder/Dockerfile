@@ -6,6 +6,7 @@ WORKDIR /app
 RUN pip install torch==2.3.0 --index-url https://download.pytorch.org/whl/cpu
 
 # Системные зависимости (добавлен libgomp1 для работы PyTorch/Transformers на CPU)
+
 # RUN apt-get update && apt-get install -y --no-install-recommends \
 #     curl \
 #     wget \
