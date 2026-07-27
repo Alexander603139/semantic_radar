@@ -1,9 +1,8 @@
---extra-index-url https://pytorch.org
 fastapi==0.115.0
 uvicorn[standard]==0.30.0
 sentence-transformers==3.0.0
 transformers==4.41.2
-torch==2.1.0+cpu
+torch==2.1.0
 pydantic==2.13.4
 pyarrow==25.0.0
 pandas==2.2.0
