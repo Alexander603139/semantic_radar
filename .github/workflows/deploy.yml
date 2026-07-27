@@ -37,7 +37,7 @@ jobs:
 
             # Предварительная загрузка тяжёлого образа Playwright (ускоряет сборку ingestor)
             # Если образ не используется, можно убрать, но оставлено для совместимости
-            docker pull mcr.microsoft.com/playwright/python:v1.46.0-jammy || true
+            # docker pull mcr.microsoft.com/playwright/python:v1.46.0-jammy || true
 
             # Скачивание актуальных образов
             docker-compose pull
