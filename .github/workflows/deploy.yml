@@ -18,6 +18,7 @@ jobs:
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.TIMEWEB_HOST }}
+          port: 2222
           username: root
           key: ${{ secrets.TIMEWEB_SSH_KEY }}
           source: "."
@@ -27,6 +28,7 @@ jobs:
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.TIMEWEB_HOST }}
+          port: 2222
           username: root
           key: ${{ secrets.TIMEWEB_SSH_KEY }}
           script: |
@@ -34,10 +36,6 @@ jobs:
             
             # Остановка старых контейнеров
             docker-compose down
-
-            # Предварительная загрузка тяжёлого образа Playwright (ускоряет сборку ingestor)
-            # Если образ не используется, можно убрать, но оставлено для совместимости
-            # docker pull mcr.microsoft.com/playwright/python:v1.46.0-jammy || true
 
             # Скачивание актуальных образов
             docker-compose pull
