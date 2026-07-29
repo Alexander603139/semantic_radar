@@ -45,4 +45,4 @@ jobs:
 
             # Очистка неиспользуемых образов
             docker image prune -f
-          timeout: 3600s
+          timeout: 7200s
