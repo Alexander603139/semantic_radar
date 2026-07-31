@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 import logging
-import os
 from .models import ReportRequest, ReportResponse
 from .reporter import generate_report, generate_text_summary
 from .settings import settings
+import os
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
