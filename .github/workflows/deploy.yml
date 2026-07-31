@@ -41,8 +41,9 @@ jobs:
             docker-compose pull
 
             # Пересборка и запуск контейнеров
-            docker-compose up -d --build
+            # docker-compose up -d --build
+            docker-compose up -d
 
             # Очистка неиспользуемых образов
             docker image prune -f
-          timeout: 7200s
+          timeout: 1800s
