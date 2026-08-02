@@ -1,3 +1,4 @@
+import os
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
@@ -7,6 +8,7 @@ class Settings(BaseSettings):
     CHUNK_SIZE: int = 256 # Максимальная длина чанка в токенах (для MiniLM ~256 слов)
     CHUNK_OVERLAP: int = 32
     PORT: int = 8002 # Порт сервиса
+    STORAGE_URL: str = os.getenv("STORAGE_URL", "http://storage:8007")  # будет переопределено в docker-compose
 
     class Config:
         env_file = ".env"

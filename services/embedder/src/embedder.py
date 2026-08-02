@@ -9,6 +9,9 @@ from datetime import datetime
 from typing import List, Dict, Any
 from .settings import settings
 from .models import Article
+import json
+import httpx
+import io
 
 logger = logging.getLogger(__name__)
 
@@ -40,16 +43,63 @@ def chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVE
             chunks.append(chunk)
     return chunks
 
-def process_articles(articles: List[Article], user_id: str) -> tuple[str, int]:
-    """
-    Основная функция:
-      - чанкует все статьи,
-      - вычисляет эмбеддинги,
-      - сохраняет в Parquet,
-      - возвращает путь к файлу.
-    """
+# def process_articles(articles: List[Article], user_id: str) -> tuple[str, int]:
+#     """
+#     Основная функция:
+#       - чанкует все статьи,
+#       - вычисляет эмбеддинги,
+#       - сохраняет в Parquet,
+#       - возвращает путь к файлу.
+#     """
+#     all_chunks = []
+#     all_meta = []  # будет хранить словари с метаданными для каждого чанка
+
+#     for article in articles:
+#         chunks = chunk_text(article.text)
+#         for idx, chunk in enumerate(chunks):
+#             all_chunks.append(chunk)
+#             all_meta.append({
+#                 "article_id": article.id,
+#                 "chunk_index": idx,
+#                 "source": article.source,
+#                 "published_at": article.published_at,
+#                 "title": article.title,
+#             })
+
+#     if not all_chunks:
+#         raise ValueError("Нет текста для векторизации")
+
+#     model = load_model()
+#     embeddings = model.encode(all_chunks, convert_to_numpy=True)  # shape (n_chunks, 384)
+
+#     # Собираем DataFrame
+#     df_data = {
+#         "article_id": [m["article_id"] for m in all_meta],
+#         "chunk_index": [m["chunk_index"] for m in all_meta],
+#         "source": [m["source"] for m in all_meta],
+#         "published_at": [m["published_at"] for m in all_meta],
+#         "title": [m["title"] for m in all_meta],
+#         "text": all_chunks,
+#         "embedding": [emb.tolist() for emb in embeddings],  # список float
+#     }
+#     df = pd.DataFrame(df_data)
+
+#     # Путь для сохранения
+#     date_str = datetime.now().strftime("%Y-%m-%d")
+#     user_dir = os.path.join(VECTORS_ROOT, f"user_{user_id}")
+#     os.makedirs(user_dir, exist_ok=True)
+#     filepath = os.path.join(user_dir, f"{date_str}.parquet")
+
+#     # Сохраняем в Parquet
+#     table = pa.Table.from_pandas(df)
+#     pq.write_table(table, filepath)
+#     logger.info(f"Сохранено {len(all_chunks)} чанков в {filepath}")
+
+#     return filepath, len(all_chunks)
+
+async def process_articles(articles: List[Article], user_id: str) -> tuple[str, int]:
     all_chunks = []
-    all_meta = []  # будет хранить словари с метаданными для каждого чанка
+    all_meta = []
 
     for article in articles:
         chunks = chunk_text(article.text)
@@ -67,9 +117,8 @@ def process_articles(articles: List[Article], user_id: str) -> tuple[str, int]:
         raise ValueError("Нет текста для векторизации")
 
     model = load_model()
-    embeddings = model.encode(all_chunks, convert_to_numpy=True)  # shape (n_chunks, 384)
+    embeddings = model.encode(all_chunks, convert_to_numpy=True)
 
-    # Собираем DataFrame
     df_data = {
         "article_id": [m["article_id"] for m in all_meta],
         "chunk_index": [m["chunk_index"] for m in all_meta],
@@ -77,22 +126,37 @@ def process_articles(articles: List[Article], user_id: str) -> tuple[str, int]:
         "published_at": [m["published_at"] for m in all_meta],
         "title": [m["title"] for m in all_meta],
         "text": all_chunks,
-        "embedding": [emb.tolist() for emb in embeddings],  # список float
+        "embedding": [emb.tolist() for emb in embeddings],
     }
     df = pd.DataFrame(df_data)
 
-    # Путь для сохранения
-    date_str = datetime.now().strftime("%Y-%m-%d")
-    user_dir = os.path.join(VECTORS_ROOT, f"user_{user_id}")
-    os.makedirs(user_dir, exist_ok=True)
-    filepath = os.path.join(user_dir, f"{date_str}.parquet")
-
-    # Сохраняем в Parquet
+    # Буфер в памяти
     table = pa.Table.from_pandas(df)
-    pq.write_table(table, filepath)
-    logger.info(f"Сохранено {len(all_chunks)} чанков в {filepath}")
+    buf = io.BytesIO()
+    pq.write_table(table, buf)
+    buf.seek(0)
 
-    return filepath, len(all_chunks)
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    filename = f"{date_str}.parquet"
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        files = {'file': (filename, buf, 'application/octet-stream')}
+        data = {
+            'user_id': user_id,
+            'file_type': 'vectors',
+            'file_key': filename,
+            'metadata': json.dumps({"chunk_count": len(all_chunks), "source_count": len(articles)})
+        }
+        resp = await client.post(
+            f"{settings.STORAGE_URL}/upload",
+            files=files,
+            data=data
+        )
+        resp.raise_for_status()
+        result = resp.json()
+        file_id = result.get('id')
+        logger.info(f"Векторы сохранены в storage: file_id={file_id}, чанков={len(all_chunks)}")
+        return file_id, len(all_chunks)
 
 def compute_embeddings(texts: List[str]) -> np.ndarray:
     """
