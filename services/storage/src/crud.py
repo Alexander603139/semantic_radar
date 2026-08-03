@@ -7,7 +7,7 @@ def create_file_record(db: Session, file_data: schemas.FileCreate, storage_path:
     db_file = models.FileRecord(
         id=str(uuid.uuid4()),
         user_id=file_data.user_id,
-        file_type=file_data.file_type,
+        file_type=file_data.file_type.value,
         file_key=file_data.file_key,
         version=1,
         storage_path=storage_path,
