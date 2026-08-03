@@ -13,7 +13,7 @@ class FileRecord(Base):
 
     id = Column(String(36), primary_key=True)  # UUID
     user_id = Column(String(50), nullable=False, index=True)
-    file_type = Column(Enum(FileType), nullable=False)
+    file_type = Column(String(50), nullable=False)
     file_key = Column(String(255), nullable=False)  # уникальный идентификатор файла в рамках пользователя
     version = Column(Integer, nullable=False, default=1)
     storage_path = Column(String(500), nullable=False)  # путь в S3
