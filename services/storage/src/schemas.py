@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
@@ -15,6 +15,7 @@ class FileCreate(BaseModel):
     extra_metadata: Optional[Dict[str, Any]] = None
 
 class FileResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: str
     user_id: str
     file_type: FileType

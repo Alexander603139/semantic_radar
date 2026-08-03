@@ -50,7 +50,7 @@ async def upload_file(
         extra_metadata=metadata and json.loads(metadata) or None,
     )
     db_file = crud.create_file_record(db, file_create, s3_key, checksum)
-    return schemas.FileResponse.from_orm(db_file)
+    return schemas.FileResponse.model_validate(db_file)
 
 @router.get("/download/{file_id}")
 async def download_file(file_id: str, db: Session = Depends(get_db)):
