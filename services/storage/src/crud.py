@@ -12,7 +12,7 @@ def create_file_record(db: Session, file_data: schemas.FileCreate, storage_path:
         version=1,
         storage_path=storage_path,
         checksum=checksum,
-        metadata=file_data.metadata,
+        extra_metadata=file_data.extra_metadata,
     )
     db.add(db_file)
     db.commit()

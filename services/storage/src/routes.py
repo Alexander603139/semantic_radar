@@ -47,7 +47,7 @@ async def upload_file(
         user_id=user_id,
         file_type=file_type,
         file_key=file_key,
-        metadata=metadata and json.loads(metadata) or None,
+        extra_metadata=metadata and json.loads(metadata) or None,
     )
     db_file = crud.create_file_record(db, file_create, s3_key, checksum)
     return schemas.FileResponse.from_orm(db_file)

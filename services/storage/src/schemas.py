@@ -12,7 +12,7 @@ class FileCreate(BaseModel):
     user_id: str
     file_type: FileType
     file_key: str
-    metadata: Optional[Dict[str, Any]] = None
+    extra_metadata: Optional[Dict[str, Any]] = None
 
 class FileResponse(BaseModel):
     id: str
@@ -22,6 +22,6 @@ class FileResponse(BaseModel):
     version: int
     storage_path: str
     checksum: Optional[str]
-    metadata: Optional[Dict[str, Any]]
+    extra_metadata: Optional[Dict[str, Any]]
     created_at: datetime
     updated_at: Optional[datetime]
