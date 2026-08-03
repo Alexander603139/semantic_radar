@@ -72,7 +72,7 @@ async def list_files(
     db: Session = Depends(get_db),
 ):
     files = crud.get_files(db, user_id, file_type, limit)
-    return [schemas.FileResponse.from_orm(f) for f in files]
+    return [schemas.FileResponse.model_validate(f) for f in files]
 
 @router.delete("/{file_id}")
 async def delete_file(file_id: str, db: Session = Depends(get_db)):
