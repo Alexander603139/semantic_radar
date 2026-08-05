@@ -68,6 +68,9 @@ services:
       REPORTS_ROOT: /app/data/reports
       PORT: 8005
       PLOTLY_TEMPLATE: plotly_white
+      STORAGE_URL: http://storage:8007
+    depends_on:
+      - storage                          # <-- добавлено (опционально)
     networks:
       - semantic-net
 

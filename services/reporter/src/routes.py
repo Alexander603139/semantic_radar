@@ -14,24 +14,17 @@ async def generate_report_endpoint(request: ReportRequest):
     try:
         # Конвертируем Pydantic-модель в dict для обработки
         analysis_data = request.analysis_result.dict()
-        filepath = generate_report(request.user_id, analysis_data)
+        file_id = await generate_report(request.user_id, analysis_data)
 
-        # Генерируем текстовое резюме (заглушка)
+        # Генерируем текстовое резюме (заглушка или вызов YandexGPT)
         text_summary = generate_text_summary(
             analysis_data.get("shifted_topics", []),
             analysis_data.get("drift_score", 0.0)
         )
 
-        # Возвращаем относительный путь для доступа через HTTP
-        # relative_path = os.path.relpath(filepath, start=settings.REPORTS_ROOT)
-        # report_url = f"/reports/{request.user_id}/{os.path.basename(filepath)}"
+        # Возвращаем URL для доступа к отчёту через Nginx (прокси на storage)
+        report_url = f"/reports/{file_id}"
 
-        folder_name = f"user_{request.user_id}"
-        report_url = f"/reports/{folder_name}/{os.path.basename(filepath)}"
-
-
-        logger.info("Формируем ответ")
-        logger.info(f"Ответ: status=ok, report_url={report_url}, text_summary={text_summary}")
         return ReportResponse(
             status="ok",
             report_url=report_url,

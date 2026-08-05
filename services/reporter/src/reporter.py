@@ -1,8 +1,10 @@
 import os
 import logging
 import json
+import io
 from datetime import datetime
 from typing import Dict, Any, Optional
+import httpx
 import plotly.graph_objects as go
 import plotly.express as px
 import numpy as np
@@ -11,22 +13,13 @@ from .settings import settings
 
 logger = logging.getLogger(__name__)
 
-def generate_report(user_id: str, analysis_data: Dict[str, Any]) -> str:
+async def generate_report(user_id: str, analysis_data: Dict[str, Any]) -> str:
     """
-    Генерирует HTML-отчёт на основе данных анализа.
-    Сохраняет файл в reports/{user_id}/ и возвращает путь.
+    Генерирует HTML-отчёт и сохраняет его в storage через API.
+    Возвращает file_id (или полный URL для доступа).
     """
+    # Генерация HTML (как раньше)
     logger.info("Начало генерации отчёта")
-
-    # Создаём папку пользователя
-    user_reports_dir = os.path.join(settings.REPORTS_ROOT, f"user_{user_id}")
-    os.makedirs(user_reports_dir, exist_ok=True)
-
-    # Формируем имя файла с датой
-    date_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    filename = f"report_{date_str}.html"
-    filepath = os.path.join(user_reports_dir, filename)
-
     # Извлекаем данные из анализа
     drift_score = analysis_data.get("drift_score", 0.0)
     shifted_topics = analysis_data.get("shifted_topics", [])
@@ -52,13 +45,43 @@ def generate_report(user_id: str, analysis_data: Dict[str, Any]) -> str:
         shifted_topics=shifted_topics
     )
 
-    # Сохраняем
-    logger.info(f"Сохраняем в {filepath}")
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.write(html_content)
+    # Сохраняем HTML в буфер (без записи на диск)
+    html_bytes = html_content.encode('utf-8')
+    buf = io.BytesIO(html_bytes)
+    buf.seek(0)
 
-    logger.info(f"Анализ: {analysis_data.keys()}")
-    return filepath
+    # Формируем имя файла
+    date_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    filename = f"report_{date_str}.html"
+
+    # Отправляем в storage
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        files = {'file': (filename, buf, 'text/html')}
+        data = {
+            'user_id': user_id,
+            'file_type': 'reports',
+            'file_key': filename,
+            'metadata': json.dumps({
+                "drift_score": drift_score,
+                "shifted_topics_count": len(shifted_topics)
+            })
+        }
+        try:
+            resp = await client.post(
+                f"{settings.STORAGE_URL}/upload",
+                files=files,
+                data=data
+            )
+            resp.raise_for_status()
+            result = resp.json()
+            file_id = result.get('id')
+            logger.info(f"Отчёт сохранён в storage: file_id={file_id}")
+            return file_id
+        except Exception as e:
+            logger.error(f"Ошибка сохранения отчёта в storage: {e}")
+            # fallback: сохранить локально (если нужно)
+            # local_path = save_locally(...)
+            raise
 
 def create_drift_gauge(drift_score: float) -> go.Figure:
     """Создаёт спидометр для показателя дрифта."""
