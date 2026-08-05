@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import json
+import mimetypes
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Depends
 from sqlalchemy.orm import Session
 from fastapi.responses import Response
@@ -59,10 +60,14 @@ async def download_file(file_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="File not found")
     try:
         file_data = s3_client.download_file(db_file.storage_path)
+        # Определяем content-type по расширению файла
+        content_type, _ = mimetypes.guess_type(db_file.file_key)
+        if not content_type:
+            content_type = "application/octet-stream"
+        return Response(content=file_data, media_type=content_type)
     except Exception as e:
         logger.error(f"Failed to download from S3: {e}")
         raise HTTPException(status_code=500, detail="S3 download failed")
-    return Response(content=file_data, media_type="application/octet-stream")
 
 @router.get("/list", response_model=list[schemas.FileResponse])
 async def list_files(
