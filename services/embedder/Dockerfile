@@ -2,9 +2,9 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Увеличиваем таймауты для нестабильного канала
-ENV PIP_DEFAULT_TIMEOUT=300
-ENV PIP_RETRIES=10
+# Настройка зеркала PyPI (Tsinghua)
+RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple/ && \
+    pip config set global.trusted-host pypi.tuna.tsinghua.edu.cn
 
 # Установка CPU-версии torch без CUDA-зависимостей (уменьшает размер на ~2 ГБ)
 RUN pip install --no-cache-dir torch==2.3.0 --index-url https://download.pytorch.org/whl/cpu --no-deps
