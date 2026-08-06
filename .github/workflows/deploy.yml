@@ -53,22 +53,9 @@ jobs:
           port: 22
           username: root
           key: ${{ secrets.TIMEWEB_SSH_KEY }}
-          script: |
-          
-            cd /opt/semantic-radar
-            
-            # Остановка старых контейнеров (тома сохраняются)
-            docker-compose down
-
-            # Принудительное удаление всех контейнеров (чтобы избежать ошибок ContainerConfig)
-            docker rm -f $(docker ps -aq) 2>/dev/null || true
-
-            # Полная очистка системы (удаление неиспользуемых образов, контейнеров, сетей)
-            docker system prune -af || true
-
-            # Пересборка и запуск контейнеров (подхватывает новые зависимости и код)
-            docker-compose up -d --build
-
-            # Очистка оставшихся неиспользуемых образов
-            docker image prune -f
+                set -eo pipefail
+                cd /opt/semantic-radar
+                docker-compose down --timeout 30
+                docker-compose up -d --build
+                docker-compose ps
           timeout: 1800s
