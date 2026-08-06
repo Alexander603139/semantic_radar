@@ -54,6 +54,7 @@ jobs:
           username: root
           key: ${{ secrets.TIMEWEB_SSH_KEY }}
           script: |
+          
             cd /opt/semantic-radar
             
             # Остановка старых контейнеров (тома сохраняются)
