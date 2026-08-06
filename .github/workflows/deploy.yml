@@ -54,6 +54,7 @@ jobs:
           username: root
           key: ${{ secrets.TIMEWEB_SSH_KEY }}
                 set -eo pipefail
+                
                 cd /opt/semantic-radar
                 docker-compose down --timeout 30
                 docker-compose up -d --build
