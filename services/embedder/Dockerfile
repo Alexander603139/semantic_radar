@@ -2,6 +2,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Увеличиваем таймауты для нестабильного канала
+ENV PIP_DEFAULT_TIMEOUT=300
+ENV PIP_RETRIES=10
+
 # Установка CPU-версии torch без CUDA-зависимостей (уменьшает размер на ~2 ГБ)
 RUN pip install --no-cache-dir torch==2.3.0 --index-url https://download.pytorch.org/whl/cpu --no-deps
 
