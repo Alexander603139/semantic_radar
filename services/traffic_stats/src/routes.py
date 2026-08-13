@@ -63,8 +63,3 @@ async def get_task_status(task_id: str):
         status_code=status.HTTP_501_NOT_IMPLEMENTED,
         detail="Task retrieval from storage is not implemented yet"
     )
-
-
-@router.get("/health")
-async def health_check():
-    return {"status": "ok"}
