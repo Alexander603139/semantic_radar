@@ -89,7 +89,7 @@ jobs:
               ["analyzer"]=8005
               ["reporter"]=8006
               ["storage"]=8007
-              ["traffic_stats"]=8008
+              ["traffic_stats"]=8009
             )
 
             for SERVICE in "${!SERVICES[@]}"; do

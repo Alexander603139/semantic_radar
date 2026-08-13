@@ -117,13 +117,13 @@ services:
     container_name: traffic_stats
     restart: unless-stopped
     ports:
-      - "8008:8000"
+      - "8009:8008"
     environment:
       OPR_API_KEY: ${OPR_API_KEY}
       OPR_BASE_URL: https://openpagerank.keywordseverywhere.com/v1/domains/bulk
       OPR_TIMEOUT: 30
       STORAGE_SERVICE_URL: http://storage:8007
-      PORT: 8000
+      PORT: 8008
     depends_on:
       - storage
     networks:
