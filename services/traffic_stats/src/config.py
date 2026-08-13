@@ -9,6 +9,6 @@ class Settings(BaseSettings):
     OPR_TIMEOUT: int = 30  # секунд
 
     # Внутренний сервис storage (адрес в docker-сети)
-    STORAGE_SERVICE_URL: str = "http://storage:8000"
+    STORAGE_SERVICE_URL: str = "http://storage:8007"
 
 settings = Settings()
