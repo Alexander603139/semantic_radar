@@ -44,6 +44,7 @@ jobs:
             POSTGRES_DB=storage_db
             POSTGRES_DSN=postgresql://storage_user:storage_pass@postgres:5432/storage_db
             STORAGE_URL=http://storage:8007
+            OPR_API_KEY=${{ secrets.OPR_API_KEY }}
             EOF
 
       - name: Deploy via SSH
