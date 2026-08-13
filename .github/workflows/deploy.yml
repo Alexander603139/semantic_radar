@@ -47,6 +47,20 @@ jobs:
             OPR_API_KEY=${{ secrets.OPR_API_KEY }}
             EOF
 
+      # - name: Deploy via SSH
+      #   uses: appleboy/ssh-action@master
+      #   with:
+      #     host: ${{ secrets.TIMEWEB_HOST }}
+      #     port: 22
+      #     username: root
+      #     key: ${{ secrets.TIMEWEB_SSH_KEY }}
+      #     script: |
+      #           set -eo pipefail
+      #           cd /opt/semantic-radar
+      #           docker-compose down --timeout 30
+      #           docker-compose up -d --build
+      #           docker-compose ps
+      #     timeout: 1800s
       - name: Deploy via SSH
         uses: appleboy/ssh-action@master
         with:
@@ -55,9 +69,54 @@ jobs:
           username: root
           key: ${{ secrets.TIMEWEB_SSH_KEY }}
           script: |
-                set -eo pipefail
-                cd /opt/semantic-radar
-                docker-compose down --timeout 30
-                docker-compose up -d --build
-                docker-compose ps
+            set -eo pipefail
+            cd /opt/semantic-radar
+
+            echo "=== [1/4] Building images (services keep running) ==="
+            docker-compose build
+
+            echo "=== [2/4] Recreating only changed containers ==="
+            docker-compose up -d --remove-orphans
+
+            echo "=== [3/4] Waiting for services to start ==="
+            sleep 15
+
+            echo "=== [4/4] Healthcheck all services ==="
+            FAILED=0
+            declare -A SERVICES=(
+              ["ingestor"]=8003
+              ["embedder"]=8004
+              ["analyzer"]=8005
+              ["reporter"]=8006
+              ["storage"]=8007
+              ["traffic_stats"]=8008
+            )
+
+            for SERVICE in "${!SERVICES[@]}"; do
+              PORT=${SERVICES[$SERVICE]}
+              if curl -fs --max-time 5 "http://localhost:$PORT/health" > /dev/null 2>&1; then
+                echo "✅ $SERVICE (port $PORT) — OK"
+              else
+                echo "❌ $SERVICE (port $PORT) — FAILED"
+                FAILED=1
+              fi
+            done
+
+            echo ""
+            echo "=== Container status ==="
+            docker-compose ps
+
+            if [ $FAILED -eq 1 ]; then
+              echo ""
+              echo "⚠️ Healthcheck failed. Last 50 lines of logs:"
+              docker-compose logs --tail=50
+              exit 1
+            fi
+
+            echo ""
+            echo "=== Cleaning up unused images ==="
+            docker image prune -f
+
+            echo ""
+            echo "🎉 Deploy completed successfully"
           timeout: 1800s
