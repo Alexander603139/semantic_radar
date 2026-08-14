@@ -70,7 +70,7 @@ services:
       PLOTLY_TEMPLATE: plotly_white
       STORAGE_URL: http://storage:8007
     depends_on:
-      - storage                          # <-- добавлено (опционально)
+      - storage # <-- добавлено (опционально)
     networks:
       - semantic-net
 
