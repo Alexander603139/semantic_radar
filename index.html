@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Семантический радар — админка</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="container">
+
+    <!-- ШАПКА -->
+    <div class="flex-between">
+        <h1>📡 Семантический радар <span class="sub">· админ-панель</span></h1>
+        <div>
+            <span class="badge" id="userBadge">👤 admin</span>
+            <span class="badge" id="timeBadge">⏱️ загрузка...</span>
+        </div>
+    </div>
+
+    <!-- СТАТУСЫ СЕРВИСОВ -->
+    <div class="grid">
+        <div class="card">
+            <h3>🟢 Статус сервисов</h3>
+            <div class="status-grid" id="statusContainer">
+                <div class="status-item"><span class="dot gray"></span> ingestor</div>
+                <div class="status-item"><span class="dot gray"></span> embedder</div>
+                <div class="status-item"><span class="dot gray"></span> analyzer</div>
+                <div class="status-item"><span class="dot gray"></span> reporter</div>
+                <div class="status-item"><span class="dot gray"></span> storage</div>
+                <div class="status-item"><span class="dot gray"></span> traffic_stats</div>
+            </div>
+            <div class="mt-12 flex" style="justify-content: space-between;">
+                <span class="text-muted">Последняя проверка: <span id="lastCheck">—</span></span>
+                <button class="btn btn-secondary" id="refreshStatusBtn">🔄 Обновить</button>
+            </div>
+        </div>
+
+        <!-- БЫСТРЫЕ ДЕЙСТВИЯ -->
+        <div class="card">
+            <h3>⚡ Быстрые действия</h3>
+            <div class="flex" style="flex-wrap: wrap; gap: 10px;">
+                <button class="btn" id="runParserBtn">📥 Запустить парсинг</button>
+                <button class="btn" id="runAnalysisBtn">🧠 Запустить анализ</button>
+                <button class="btn" id="generateReportBtn">📄 Сгенерировать отчёт</button>
+            </div>
+            <div class="flex mt-12" style="gap: 12px; align-items: center;">
+                <label style="font-size:14px; color:#8892a0;">Лимит статей:</label>
+                <input type="number" id="limitInput" class="input-sm" value="3" min="1" max="20">
+                <label style="font-size:14px; color:#8892a0;">Недель:</label>
+                <input type="number" id="weeksInput" class="input-sm" value="2" min="1" max="4">
+            </div>
+            <div id="actionLog" class="mt-12">
+                <div class="log-area" id="logArea">📋 Готов к работе...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ПОСЛЕДНИЕ СТАТЬИ -->
+    <div class="card">
+        <h3>📰 Последние статьи</h3>
+        <div id="articlesContainer"><p class="text-muted">Загрузка статей...</p></div>
+    </div>
+
+    <!-- ПОСЛЕДНИЕ ОТЧЁТЫ -->
+    <div class="card mt-12">
+        <h3>📄 Последние отчёты</h3>
+        <div id="reportsContainer"><p class="text-muted">Загрузка отчётов...</p></div>
+    </div>
+
+</div>
+<script src="/app.js"></script>
+</body>
+</html>
