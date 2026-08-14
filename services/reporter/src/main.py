@@ -7,11 +7,12 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Reporter Service")
-app.include_router(router)
 
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+app.include_router(router)
 
 if __name__ == "__main__":
     import uvicorn

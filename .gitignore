@@ -38,7 +38,6 @@ models/
 reports/
 *.parquet
 *.npy
-*.html
 
 # IDE и редакторы
 .vscode/

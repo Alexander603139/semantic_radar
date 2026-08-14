@@ -11,11 +11,12 @@ logger = logging.getLogger(__name__)
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Storage Service")
-app.include_router(router)
 
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+app.include_router(router)
 
 if __name__ == "__main__":
     import uvicorn

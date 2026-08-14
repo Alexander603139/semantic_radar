@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Семантический радар — админка</title>
+    <style>
+        /* Общий стиль */
+        * { box-sizing: border-box; margin: 0; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #0f1117;
+            color: #e4e7f0;
+            padding: 24px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .sub {
+            color: #8892a0;
+            font-size: 14px;
+            font-weight: 400;
+            margin-left: 8px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+            margin: 24px 0;
+        }
+        .card {
+            background: #181b24;
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid #2a2d37;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .card h3 {
+            font-size: 16px;
+            font-weight: 500;
+            color: #a0b0c0;
+            margin-bottom: 16px;
+            border-bottom: 1px solid #2a2d37;
+            padding-bottom: 10px;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 20px;
+        }
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+        .dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .dot.green { background: #2ecc71; box-shadow: 0 0 6px #2ecc7180; }
+        .dot.red { background: #e74c3c; box-shadow: 0 0 6px #e74c3c80; }
+        .dot.gray { background: #4a4f5e; }
+        .btn {
+            background: #2b6fdb;
+            color: #fff;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s, opacity 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn:hover:not(:disabled) { background: #1f5bbf; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-secondary {
+            background: #2a2d37;
+            color: #c0c8d4;
+        }
+        .btn-secondary:hover:not(:disabled) { background: #3a3f4b; }
+        .flex { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .log-area {
+            background: #0c0e14;
+            border-radius: 12px;
+            padding: 14px;
+            font-family: 'Menlo', 'Consolas', monospace;
+            font-size: 13px;
+            max-height: 180px;
+            overflow-y: auto;
+            border: 1px solid #2a2d37;
+            white-space: pre-wrap;
+            word-break: break-all;
+            color: #b0c0d0;
+        }
+        .log-area .error { color: #f28b82; }
+        .log-area .success { color: #81c995; }
+        .log-area .info { color: #8ab4f8; }
+        .table-wrap {
+            overflow-x: auto;
+            margin-top: 12px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        th {
+            text-align: left;
+            padding: 10px 8px;
+            color: #8892a0;
+            font-weight: 500;
+            border-bottom: 1px solid #2a2d37;
+        }
+        td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #1e212a;
+            color: #d0d8e0;
+        }
+        .badge {
+            background: #2a2d37;
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #b0c0d0;
+        }
+        .link {
+            color: #8ab4f8;
+            text-decoration: none;
+        }
+        .link:hover { text-decoration: underline; }
+        .mt-12 { margin-top: 12px; }
+        .mb-12 { margin-bottom: 12px; }
+        .text-center { text-align: center; }
+        .text-muted { color: #6a7a8a; font-size: 13px; }
+        .tag {
+            display: inline-block;
+            background: #2a2d37;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            color: #b0c0d0;
+        }
+        .gap-8 { gap: 8px; }
+        .input-sm {
+            background: #0c0e14;
+            border: 1px solid #2a2d37;
+            color: #e4e7f0;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 14px;
+            width: 80px;
+        }
+        @media (max-width: 600px) {
+            body { padding: 12px; }
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- ШАПКА -->
+    <div class="flex-between">
+        <h1>
+            📡 Семантический радар
+            <span class="sub">· админ-панель</span>
+        </h1>
+        <div>
+            <span class="badge" id="userBadge">👤 admin</span>
+            <span class="badge" id="timeBadge">⏱️ загрузка...</span>
+        </div>
+    </div>
+
+    <!-- СТАТУСЫ СЕРВИСОВ -->
+    <div class="grid">
+        <div class="card">
+            <h3>🟢 Статус сервисов</h3>
+            <div class="status-grid" id="statusContainer">
+                <div class="status-item"><span class="dot gray"></span> ingestor</div>
+                <div class="status-item"><span class="dot gray"></span> embedder</div>
+                <div class="status-item"><span class="dot gray"></span> analyzer</div>
+                <div class="status-item"><span class="dot gray"></span> reporter</div>
+                <div class="status-item"><span class="dot gray"></span> storage</div>
+                <div class="status-item"><span class="dot gray"></span> traffic_stats</div>
+            </div>
+            <div class="mt-12 flex" style="justify-content: space-between;">
+                <span class="text-muted">Последняя проверка: <span id="lastCheck">—</span></span>
+                <button class="btn btn-secondary" id="refreshStatusBtn">🔄 Обновить</button>
+            </div>
+        </div>
+
+        <!-- БЫСТРЫЕ ДЕЙСТВИЯ -->
+        <div class="card">
+            <h3>⚡ Быстрые действия</h3>
+            <div class="flex" style="flex-wrap: wrap; gap: 10px;">
+                <button class="btn" id="runParserBtn">📥 Запустить парсинг</button>
+                <button class="btn" id="runAnalysisBtn">🧠 Запустить анализ</button>
+                <button class="btn" id="generateReportBtn">📄 Сгенерировать отчёт</button>
+            </div>
+            <div class="flex mt-12" style="gap: 12px; align-items: center;">
+                <label style="font-size:14px; color:#8892a0;">Лимит статей:</label>
+                <input type="number" id="limitInput" class="input-sm" value="3" min="1" max="20">
+                <label style="font-size:14px; color:#8892a0;">Недель:</label>
+                <input type="number" id="weeksInput" class="input-sm" value="2" min="1" max="4">
+            </div>
+            <div id="actionLog" class="mt-12">
+                <div class="log-area" id="logArea">📋 Готов к работе...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ПОСЛЕДНИЕ СТАТЬИ -->
+    <div class="card">
+        <h3>📰 Последние статьи</h3>
+        <div id="articlesContainer">
+            <p class="text-muted">Загрузка статей...</p>
+        </div>
+    </div>
+
+    <!-- ПОСЛЕДНИЕ ОТЧЁТЫ -->
+    <div class="card mt-12">
+        <h3>📄 Последние отчёты</h3>
+        <div id="reportsContainer">
+            <p class="text-muted">Загрузка отчётов...</p>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // ---------- КОНФИГ ----------
+    const SERVICES = {
+        ingestor:  { url: '/ingestor', health: '/health' },
+        embedder:  { url: '/embedder', health: '/health' },
+        analyzer:  { url: '/analyzer', health: '/health' },
+        reporter:  { url: '/reporter', health: '/health' },
+        storage:   { url: '/storage', health: '/health' },
+        traffic_stats: { url: '/traffic_stats', health: '/health' }
+    };
+
+    // Базовый URL для API (Nginx проксирует /ingestor/run и т.д.)
+    // Если вы открываете dashboard.html локально, запросы будут к localhost:80
+    // Если через домен — укажите BASE_URL = '' (относительный путь)
+    const BASE_URL = window.location.origin;  // берёт текущий хост (например, https://lithef.twc1.net)
+
+    // ---------- DOM-элементы ----------
+    const statusContainer = document.getElementById('statusContainer');
+    const lastCheckEl = document.getElementById('lastCheck');
+    const logArea = document.getElementById('logArea');
+    const articlesContainer = document.getElementById('articlesContainer');
+    const reportsContainer = document.getElementById('reportsContainer');
+    const runParserBtn = document.getElementById('runParserBtn');
+    const runAnalysisBtn = document.getElementById('runAnalysisBtn');
+    const generateReportBtn = document.getElementById('generateReportBtn');
+    const refreshStatusBtn = document.getElementById('refreshStatusBtn');
+    const limitInput = document.getElementById('limitInput');
+    const weeksInput = document.getElementById('weeksInput');
+    const timeBadge = document.getElementById('timeBadge');
+
+    // ---------- УТИЛИТЫ ----------
+    function log(msg, type = 'info') {
+        const color = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+        logArea.innerHTML += `<div class="${color}">${new Date().toLocaleTimeString()} — ${msg}</div>`;
+        logArea.scrollTop = logArea.scrollHeight;
+    }
+
+    function clearLog() {
+        logArea.innerHTML = '';
+        log('Очищен');
+    }
+
+    function updateTime() {
+        timeBadge.textContent = new Date().toLocaleString();
+    }
+    setInterval(updateTime, 10000);
+    updateTime();
+
+    // ---------- СТАТУСЫ СЕРВИСОВ ----------
+    async function checkStatuses() {
+        const items = statusContainer.querySelectorAll('.status-item');
+        let allOk = true;
+        let i = 0;
+        for (const [name, cfg] of Object.entries(SERVICES)) {
+            const dot = items[i].querySelector('.dot');
+            try {
+                const resp = await fetch(`${BASE_URL}${cfg.url}${cfg.health}`, {
+                    signal: AbortSignal.timeout(3000)
+                });
+                if (resp.ok) {
+                    dot.className = 'dot green';
+                } else {
+                    dot.className = 'dot red';
+                    allOk = false;
+                }
+            } catch (e) {
+                dot.className = 'dot red';
+                allOk = false;
+            }
+            i++;
+        }
+        lastCheckEl.textContent = new Date().toLocaleTimeString();
+        return allOk;
+    }
+
+    refreshStatusBtn.addEventListener('click', () => {
+        log('Обновление статусов...', 'info');
+        checkStatuses().then(ok => {
+            log(ok ? 'Все сервисы доступны ✅' : 'Некоторые сервисы недоступны ❌', ok ? 'success' : 'error');
+        });
+    });
+
+    // ---------- ЗАПУСК ПАРСИНГА ----------
+    async function runParser() {
+        const limit = parseInt(limitInput.value) || 3;
+        runParserBtn.disabled = true;
+        log(`Запуск парсинга (limit=${limit})...`, 'info');
+
+        try {
+            const resp = await fetch(`${BASE_URL}/ingestor/run`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: 'admin',
+                    sources: [],  // пустой массив — ingestor использует свой список
+                    limit: limit
+                })
+            });
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const data = await resp.json();
+            log(`✅ Парсинг запущен: task_id=${data.task_id}`, 'success');
+
+            // Проверяем статус задачи через 3 секунды
+            setTimeout(() => checkTaskStatus(data.task_id), 3000);
+        } catch (e) {
+            log(`❌ Ошибка: ${e.message}`, 'error');
+        } finally {
+            runParserBtn.disabled = false;
+        }
+    }
+
+    async function checkTaskStatus(taskId) {
+        try {
+            const resp = await fetch(`${BASE_URL}/ingestor/status/${taskId}`);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const data = await resp.json();
+            if (data.status === 'completed') {
+                log(`✅ Задача ${taskId} завершена: ${data.result?.total_articles || 0} статей`, 'success');
+                loadArticles();  // обновляем список статей
+            } else if (data.status === 'failed') {
+                log(`❌ Задача ${taskId} упала: ${data.error}`, 'error');
+            } else {
+                log(`⏳ Задача ${taskId} выполняется (${data.status})...`, 'info');
+                setTimeout(() => checkTaskStatus(taskId), 5000);
+            }
+        } catch (e) {
+            log(`❌ Ошибка при проверке статуса: ${e.message}`, 'error');
+        }
+    }
+
+    // ---------- ЗАПУСК АНАЛИЗА ----------
+    async function runAnalysis() {
+        const weeks = parseInt(weeksInput.value) || 2;
+        runAnalysisBtn.disabled = true;
+        log(`Запуск анализа (weeks=${weeks})...`, 'info');
+
+        try {
+            const resp = await fetch(`${BASE_URL}/analyzer/analyze`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: 'admin', weeks: weeks })
+            });
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const data = await resp.json();
+            log(`✅ Анализ завершён: drift_score=${data.drift_score?.toFixed(4) || '—'}`, 'success');
+            // Показываем результат в логе
+            log(`📊 Сместившихся тем: ${data.shifted_topics?.length || 0}`, 'info');
+            // Автоматически генерируем отчёт
+            await generateReport(data);
+        } catch (e) {
+            log(`❌ Ошибка анализа: ${e.message}`, 'error');
+        } finally {
+            runAnalysisBtn.disabled = false;
+        }
+    }
+
+    // ---------- ГЕНЕРАЦИЯ ОТЧЁТА ----------
+    async function generateReport(analysisData) {
+        generateReportBtn.disabled = true;
+        log('Генерация отчёта...', 'info');
+
+        try {
+            const resp = await fetch(`${BASE_URL}/reporter/generate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: 'admin',
+                    analysis_result: analysisData
+                })
+            });
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const data = await resp.json();
+            log(`✅ Отчёт сгенерирован: ${data.report_url}`, 'success');
+            loadReports();  // обновляем список отчётов
+            // Добавляем ссылку в лог
+            log(`🔗 ${window.location.origin}${data.report_url}`, 'info');
+        } catch (e) {
+            log(`❌ Ошибка генерации отчёта: ${e.message}`, 'error');
+        } finally {
+            generateReportBtn.disabled = false;
+        }
+    }
+
+    // ---------- ЗАГРУЗКА СТАТЕЙ ----------
+    async function loadArticles() {
+        try {
+            const resp = await fetch(`${BASE_URL}/storage/list?user_id=admin&file_type=articles&limit=10`);
+            if (!resp.ok) {
+                // Если storage не даёт статьи, пробуем читать локальные JSON (заглушка)
+                articlesContainer.innerHTML = `<p class="text-muted">⚠️ Storage не отвечает, попробуйте позже.</p>`;
+                return;
+            }
+            const files = await resp.json();
+            if (!files || files.length === 0) {
+                articlesContainer.innerHTML = `<p class="text-muted">Нет статей.</p>`;
+                return;
+            }
+            // Показываем таблицу
+            let html = `<div class="table-wrap"><table>
+                <thead><tr><th>Заголовок</th><th>Источник</th><th>Дата</th></tr></thead><tbody>`;
+            for (const file of files) {
+                // Предполагаем, что в метаданных есть preview или title
+                const meta = file.metadata || {};
+                html += `<tr>
+                    <td>${meta.title || file.file_key || '—'}</td>
+                    <td><span class="tag">${meta.source || '—'}</span></td>
+                    <td>${file.created_at ? new Date(file.created_at).toLocaleDateString() : '—'}</td>
+                </tr>`;
+            }
+            html += `</tbody></table></div>`;
+            articlesContainer.innerHTML = html;
+        } catch (e) {
+            articlesContainer.innerHTML = `<p class="text-muted">⚠️ Не удалось загрузить статьи: ${e.message}</p>`;
+        }
+    }
+
+    // ---------- ЗАГРУЗКА ОТЧЁТОВ ----------
+    async function loadReports() {
+        try {
+            const resp = await fetch(`${BASE_URL}/storage/list?user_id=admin&file_type=reports&limit=5`);
+            if (!resp.ok) {
+                reportsContainer.innerHTML = `<p class="text-muted">Нет отчётов.</p>`;
+                return;
+            }
+            const files = await resp.json();
+            if (!files || files.length === 0) {
+                reportsContainer.innerHTML = `<p class="text-muted">Нет сгенерированных отчётов.</p>`;
+                return;
+            }
+            let html = `<div class="table-wrap"><table>
+                <thead><tr><th>Дата</th><th>Файл</th><th>Ссылка</th></tr></thead><tbody>`;
+            for (const file of files) {
+                const fileId = file.id;
+                const created = file.created_at ? new Date(file.created_at).toLocaleString() : '—';
+                const fileName = file.file_key || 'отчёт';
+                html += `<tr>
+                    <td>${created}</td>
+                    <td>${fileName}</td>
+                    <td><a href="${BASE_URL}/reports/admin/${fileId}" target="_blank" class="link">🔗 Открыть</a></td>
+                </tr>`;
+            }
+            html += `</tbody></table></div>`;
+            reportsContainer.innerHTML = html;
+        } catch (e) {
+            reportsContainer.innerHTML = `<p class="text-muted">⚠️ Ошибка загрузки отчётов: ${e.message}</p>`;
+        }
+    }
+
+    // ---------- ПРИВЯЗКА КНОПОК ----------
+    runParserBtn.addEventListener('click', runParser);
+    runAnalysisBtn.addEventListener('click', runAnalysis);
+    generateReportBtn.addEventListener('click', () => {
+        // Если анализа нет — попробуем запустить его
+        log('Запуск генерации отчёта без данных анализа — попробуйте сначала запустить анализ.', 'info');
+    });
+
+    // ---------- ИНИЦИАЛИЗАЦИЯ ----------
+    async function init() {
+        log('🚀 Загрузка админ-панели...', 'info');
+        await checkStatuses();
+        await loadArticles();
+        await loadReports();
+        log('✅ Готово', 'success');
+    }
+
+    init();
+
+    // Автообновление статусов и данных раз в 60 секунд
+    setInterval(() => {
+        checkStatuses();
+        loadArticles();
+        loadReports();
+    }, 60000);
+
+</script>
+</body>
+</html>
