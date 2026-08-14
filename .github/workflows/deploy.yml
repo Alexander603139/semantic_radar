@@ -47,20 +47,6 @@ jobs:
             OPR_API_KEY=${{ secrets.OPR_API_KEY }}
             EOF
 
-      # - name: Deploy via SSH
-      #   uses: appleboy/ssh-action@master
-      #   with:
-      #     host: ${{ secrets.TIMEWEB_HOST }}
-      #     port: 22
-      #     username: root
-      #     key: ${{ secrets.TIMEWEB_SSH_KEY }}
-      #     script: |
-      #           set -eo pipefail
-      #           cd /opt/semantic-radar
-      #           docker-compose down --timeout 30
-      #           docker-compose up -d --build
-      #           docker-compose ps
-      #     timeout: 1800s
       - name: Deploy via SSH
         uses: appleboy/ssh-action@master
         with:
