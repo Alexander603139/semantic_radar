@@ -259,7 +259,8 @@
     // Базовый URL для API (Nginx проксирует /ingestor/run и т.д.)
     // Если вы открываете dashboard.html локально, запросы будут к localhost:80
     // Если через домен — укажите BASE_URL = '' (относительный путь)
-    const BASE_URL = window.location.origin;  // берёт текущий хост (например, https://lithef.twc1.net)
+    // const BASE_URL = window.location.origin;  // берёт текущий хост (например, https://lithef.twc1.net)
+    const BASE_URL = 'https://lithef.twc1.net';
 
     // ---------- DOM-элементы ----------
     const statusContainer = document.getElementById('statusContainer');
