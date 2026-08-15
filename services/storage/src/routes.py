@@ -54,7 +54,7 @@ async def upload_file(
     return schemas.FileResponse.model_validate(db_file)
 
 @router.get("/download/{file_id}")
-@router.get("/{file_id}")
+# @router.get("/{file_id}")
 async def download_file(file_id: str, db: Session = Depends(get_db)):
     db_file = crud.get_file_record(db, file_id)
     if not db_file:
