@@ -14,7 +14,7 @@ class Article(BaseModel):
 
 class RunRequest(BaseModel):
     user_id: str = "test_user"          # временно, позже из JWT
-    sources: List[str]                  # список URL сайтов
+    sources: Optional[List[str]] = None   # теперь можно не передавать
     limit: int = 5                      # количество статей на сайт
 
 class RunResponse(BaseModel):

@@ -28,8 +28,8 @@ async def run_parser(request: RunRequest, background_tasks: BackgroundTasks):
     Запускает парсинг для переданного списка сайтов.
     Возвращает task_id для отслеживания статуса.
     """
-    if not request.sources:
-        raise HTTPException(status_code=400, detail="Список источников не может быть пустым")
+    if request.sources is None or not request.sources:
+        request.sources = settings.SOURCES   # используем список из настроек
     # Запускаем задачу в фоне
     task_id = await run_parsing_task(
         user_id=request.user_id,
