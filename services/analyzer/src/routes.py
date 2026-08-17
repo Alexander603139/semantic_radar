@@ -9,7 +9,7 @@ router = APIRouter()
 @router.post("/analyze", response_model=AnalyzeResponse)
 async def analyze(request: AnalyzeRequest):
     try:
-        result = analyze_user(request.user_id, request.weeks)
+        result = await analyze_user(request.user_id, request.weeks)
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
         return AnalyzeResponse(
