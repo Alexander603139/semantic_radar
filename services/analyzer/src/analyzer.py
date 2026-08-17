@@ -135,15 +135,26 @@ def analyze_user(user_id: str, weeks: int) -> Dict[str, Any]:
     # df_current = load_vectors_for_week(user_id, start_current)
     # df_previous = load_vectors_for_week(user_id, start_previous)
 
-    # Загружаем данные за текущую неделю (последние 7 дней)
+    # # Загружаем данные за текущую неделю (последние 7 дней)
+    # end_current = datetime.now()
+    # start_current = end_current - timedelta(days=7)
+    # df_current = load_vectors_for_period(user_id, start_current, end_current)
+
+    # # Загружаем данные за предыдущую неделю (8-14 дней назад)
+    # end_previous = start_current - timedelta(days=1)
+    # start_previous = end_previous - timedelta(days=7)
+    # df_previous = load_vectors_for_period(user_id, start_previous, end_previous)
+
+    # Загружаем все доступные файлы
+    all_files = load_all_vectors_for_user(user_id)
+    if all_files.empty:
+        return {"error": "Нет данных для анализа"}
+
+    # Разделяем на две части: последние 7 дней и предыдущие 7 дней
     end_current = datetime.now()
     start_current = end_current - timedelta(days=7)
-    df_current = load_vectors_for_period(user_id, start_current, end_current)
-
-    # Загружаем данные за предыдущую неделю (8-14 дней назад)
-    end_previous = start_current - timedelta(days=1)
-    start_previous = end_previous - timedelta(days=7)
-    df_previous = load_vectors_for_period(user_id, start_previous, end_previous)
+    df_current = all_files[all_files['file_date'] >= start_current]
+    df_previous = all_files[all_files['file_date'] < start_current]
 
     if df_current.empty and df_previous.empty:
         return {"error": "Нет данных для анализа"}
@@ -219,3 +230,26 @@ def analyze_user(user_id: str, weeks: int) -> Dict[str, Any]:
             "previous_week": {"clusters": clusters_prev, "total_samples": len(labels_prev)}
         }
     }
+
+def load_all_vectors_for_user(user_id: str) -> pd.DataFrame:
+    """Загружает все Parquet-файлы пользователя и добавляет колонку file_date."""
+    user_dir = os.path.join(settings.VECTORS_ROOT, f"user_{user_id}")
+    if not os.path.exists(user_dir):
+        return pd.DataFrame()
+    all_dfs = []
+    for filename in os.listdir(user_dir):
+        if not filename.endswith('.parquet'):
+            continue
+        try:
+            date_str = filename.split('.')[0]
+            file_date = datetime.strptime(date_str, "%Y-%m-%d")
+            filepath = os.path.join(user_dir, filename)
+            df = pd.read_parquet(filepath)
+            df['file_date'] = file_date
+            all_dfs.append(df)
+        except Exception as e:
+            logger.warning(f"Не удалось загрузить {filename}: {e}")
+            continue
+    if not all_dfs:
+        return pd.DataFrame()
+    return pd.concat(all_dfs, ignore_index=True)
