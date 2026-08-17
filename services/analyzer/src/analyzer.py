@@ -42,7 +42,7 @@ async def load_vectors_for_period(user_id: str, start_date: datetime, end_date: 
             created_at = file["created_at"]
             if created_at:
                 try:
-                    file_date = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                    file_date = datetime.fromisoformat(created_at.replace('Z', '+00:00')).replace(tzinfo=None)
                 except:
                     continue
                 if start_date <= file_date <= end_date:
