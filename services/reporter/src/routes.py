@@ -23,7 +23,8 @@ async def generate_report_endpoint(request: ReportRequest):
         )
 
         # Возвращаем URL для доступа к отчёту через Nginx (прокси на storage)
-        report_url = f"/reports/{file_id}"
+        # report_url = f"/reports/{file_id}"
+        report_url = f"/reports/admin/{file_id}"
 
         return ReportResponse(
             status="ok",
