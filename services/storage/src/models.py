@@ -8,6 +8,15 @@ class FileType(enum.Enum):
     ARTICLES = "articles"
     REPORTS = "reports"
 
+class UserSettings(Base):
+    __tablename__ = "user_settings"
+
+    user_id = Column(String(50), primary_key=True, index=True)
+    sources = Column(JSON, nullable=False, default=list)  # массив строк
+    schedule_cron = Column(String(100), nullable=True, default="0 5 * * *")
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
 class FileRecord(Base):
     __tablename__ = "files"
 

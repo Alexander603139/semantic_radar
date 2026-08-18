@@ -6,6 +6,8 @@ from .models import RunRequest, RunResponse, TaskStatusResponse
 from .tasks import run_parsing_task, tasks_store
 from .scheduler import init_scheduler
 from dotenv import load_dotenv
+import httpx
+from .routes import router
 load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
@@ -13,11 +15,12 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Старт планировщика при запуске приложения
     init_scheduler()
-    logger.info("Ingestor service started")
+    # Загружаем настройки пользователя
+    user_settings = await load_user_settings("admin")
+    app.state.user_settings = user_settings
+    logger.info(f"Loaded settings: {user_settings}")
     yield
-    # Здесь можно добавить остановку планировщика, если нужно
     logger.info("Ingestor service shutting down")
 
 app = FastAPI(lifespan=lifespan)
@@ -28,8 +31,12 @@ async def run_parser(request: RunRequest, background_tasks: BackgroundTasks):
     Запускает парсинг для переданного списка сайтов.
     Возвращает task_id для отслеживания статуса.
     """
+    # Если sources не переданы, берём из настроек
     if request.sources is None or not request.sources:
-        request.sources = settings.SOURCES   # используем список из настроек
+        request.sources = app.state.user_settings.get("sources", settings.SOURCES)
+    # Если limit не передан, используем дефолтный
+    if request.limit is None:
+        request.limit = 5
     # Запускаем задачу в фоне
     task_id = await run_parsing_task(
         user_id=request.user_id,
@@ -50,6 +57,16 @@ async def get_status(task_id: str):
         result=info.get("result"),
         error=info.get("error")
     )
+
+async def load_user_settings(user_id: str = "admin") -> dict:
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"{settings.STORAGE_URL}/settings/{user_id}")
+        if resp.status_code == 200:
+            return resp.json()
+        return {"sources": settings.SOURCES, "schedule_cron": settings.SCHEDULE_CRON}
+
+# Подключаем роутер с админскими эндпоинтами
+app.include_router(router)
 
 @app.get("/health")
 async def health():

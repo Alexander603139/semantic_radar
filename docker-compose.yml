@@ -32,6 +32,7 @@ services:
       EMBEDDER_MOCK: "False"
       PORT: 8001
       SCHEDULE_CRON: "0 5 * * *"
+      STORAGE_URL: http://storage:8007
     depends_on:
       - embedder
     networks:

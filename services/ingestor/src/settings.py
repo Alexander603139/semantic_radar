@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from typing import List, Tuple
+import os
 
 class Settings(BaseSettings):
     # Основные настройки
@@ -53,6 +54,9 @@ class Settings(BaseSettings):
         r'/\d{4}/\d{2}/\d{2}/',   # дата в URL
         r'/\d{6,}/',              # числовой ID (6+ цифр)
     ]
+
+    # чтобы ingestor читал настройки из storage
+    STORAGE_URL: str = os.getenv("STORAGE_URL", "http://storage:8007")
 
     class Config:
         env_file = ".env"

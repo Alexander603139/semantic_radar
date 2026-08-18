@@ -7,9 +7,16 @@ from sqlalchemy.orm import Session
 from fastapi.responses import Response
 from .database import SessionLocal
 from . import crud, schemas, s3_client
+from .models import UserSettings
+from pydantic import BaseModel
+from typing import List, Optional
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+class UserSettingsUpdate(BaseModel):
+    sources: List[str]
+    schedule_cron: Optional[str] = "0 5 * * *"
 
 def get_db():
     db = SessionLocal()
@@ -94,3 +101,38 @@ async def delete_file(file_id: str, db: Session = Depends(get_db)):
     # Мягкое удаление в БД
     crud.delete_file_record(db, file_id)
     return {"status": "deleted"}
+
+@router.get("/settings/{user_id}")
+async def get_user_settings(user_id: str, db: Session = Depends(get_db)):
+    settings = db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
+    if not settings:
+        # Если настроек нет, создаём с дефолтными значениями
+        settings = UserSettings(
+            user_id=user_id,
+            sources=[],  # или список по умолчанию
+            schedule_cron="0 5 * * *"
+        )
+        db.add(settings)
+        db.commit()
+        db.refresh(settings)
+    return {
+        "user_id": settings.user_id,
+        "sources": settings.sources,
+        "schedule_cron": settings.schedule_cron
+    }
+
+@router.post("/settings/{user_id}")
+async def update_user_settings(
+    user_id: str,
+    data: UserSettingsUpdate,
+    db: Session = Depends(get_db)
+):
+    settings = db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
+    if not settings:
+        settings = UserSettings(user_id=user_id)
+        db.add(settings)
+    settings.sources = data.sources
+    settings.schedule_cron = data.schedule_cron
+    db.commit()
+    db.refresh(settings)
+    return {"status": "ok", "user_id": user_id}
