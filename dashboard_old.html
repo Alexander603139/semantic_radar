@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Семантический радар — админка</title>
     <style>
+        /* Общий стиль */
         * { box-sizing: border-box; margin: 0; }
         body {
             font-family: system-ui, -apple-system, sans-serif;
@@ -13,7 +14,10 @@
             padding: 24px;
             min-height: 100vh;
         }
-        .container { max-width: 1400px; margin: 0 auto; }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
         h1 {
             font-size: 28px;
             font-weight: 600;
@@ -22,16 +26,15 @@
             align-items: center;
             gap: 12px;
         }
-        .sub { color: #8892a0; font-size: 14px; font-weight: 400; margin-left: 8px; }
+        .sub {
+            color: #8892a0;
+            font-size: 14px;
+            font-weight: 400;
+            margin-left: 8px;
+        }
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 20px;
-            margin: 24px 0;
-        }
-        .grid-2col {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
             gap: 20px;
             margin: 24px 0;
         }
@@ -75,7 +78,7 @@
             background: #2b6fdb;
             color: #fff;
             border: none;
-            padding: 8px 16px;
+            padding: 10px 18px;
             border-radius: 10px;
             font-size: 14px;
             font-weight: 500;
@@ -87,12 +90,11 @@
         }
         .btn:hover:not(:disabled) { background: #1f5bbf; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .btn-secondary { background: #2a2d37; color: #c0c8d4; }
+        .btn-secondary {
+            background: #2a2d37;
+            color: #c0c8d4;
+        }
         .btn-secondary:hover:not(:disabled) { background: #3a3f4b; }
-        .btn-success { background: #2e7d32; color: #fff; }
-        .btn-success:hover:not(:disabled) { background: #1b5e20; }
-        .btn-danger { background: #c62828; color: #fff; }
-        .btn-danger:hover:not(:disabled) { background: #b71c1c; }
         .flex { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
         .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
         .log-area {
@@ -132,18 +134,6 @@
             border-bottom: 1px solid #1e212a;
             color: #d0d8e0;
         }
-        textarea {
-            width: 100%;
-            background: #0c0e14;
-            border: 1px solid #2a2d37;
-            color: #e4e7f0;
-            border-radius: 8px;
-            padding: 10px;
-            font-family: 'Menlo', 'Consolas', monospace;
-            font-size: 13px;
-            resize: vertical;
-            min-height: 200px;
-        }
         .badge {
             background: #2a2d37;
             padding: 2px 12px;
@@ -158,6 +148,7 @@
         .link:hover { text-decoration: underline; }
         .mt-12 { margin-top: 12px; }
         .mb-12 { margin-bottom: 12px; }
+        .text-center { text-align: center; }
         .text-muted { color: #6a7a8a; font-size: 13px; }
         .tag {
             display: inline-block;
@@ -167,6 +158,7 @@
             font-size: 12px;
             color: #b0c0d0;
         }
+        .gap-8 { gap: 8px; }
         .input-sm {
             background: #0c0e14;
             border: 1px solid #2a2d37;
@@ -174,22 +166,11 @@
             border-radius: 8px;
             padding: 8px 12px;
             font-size: 14px;
-            width: 200px;
-        }
-        .cron-input {
-            background: #0c0e14;
-            border: 1px solid #2a2d37;
-            color: #e4e7f0;
-            border-radius: 8px;
-            padding: 8px 12px;
-            font-size: 14px;
-            width: 200px;
-            font-family: 'Menlo', 'Consolas', monospace;
+            width: 80px;
         }
         @media (max-width: 600px) {
             body { padding: 12px; }
             .grid { grid-template-columns: 1fr; }
-            .grid-2col { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -198,7 +179,10 @@
 
     <!-- ШАПКА -->
     <div class="flex-between">
-        <h1>📡 Семантический радар <span class="sub">· админ-панель</span></h1>
+        <h1>
+            📡 Семантический радар
+            <span class="sub">· админ-панель</span>
+        </h1>
         <div>
             <span class="badge" id="userBadge">👤 admin</span>
             <span class="badge" id="timeBadge">⏱️ загрузка...</span>
@@ -233,9 +217,9 @@
             </div>
             <div class="flex mt-12" style="gap: 12px; align-items: center;">
                 <label style="font-size:14px; color:#8892a0;">Лимит статей:</label>
-                <input type="number" id="limitInput" class="input-sm" value="3" min="1" max="20" style="width:80px;">
+                <input type="number" id="limitInput" class="input-sm" value="3" min="1" max="20">
                 <label style="font-size:14px; color:#8892a0;">Недель:</label>
-                <input type="number" id="weeksInput" class="input-sm" value="2" min="1" max="4" style="width:80px;">
+                <input type="number" id="weeksInput" class="input-sm" value="2" min="1" max="4">
             </div>
             <div id="actionLog" class="mt-12">
                 <div class="log-area" id="logArea">📋 Готов к работе...</div>
@@ -243,58 +227,20 @@
         </div>
     </div>
 
-    <!-- УПРАВЛЕНИЕ СПИСКОМ САЙТОВ И CRON -->
-    <div class="grid-2col">
-        <!-- Левая колонка: список сайтов -->
-        <div class="card">
-            <h3>🌐 Управление списком сайтов</h3>
-            <textarea id="sourcesTextarea" placeholder="Введите сайты по одному на строку..."></textarea>
-            <div class="flex mt-12">
-                <button class="btn btn-secondary" id="loadSourcesBtn">📂 Загрузить</button>
-                <button class="btn btn-success" id="saveSourcesBtn">💾 Сохранить</button>
-                <button class="btn" id="measureSourcesBtn">📊 Измерить</button>
-                <button class="btn btn-danger" id="clearSourcesBtn">🗑️ Очистить</button>
-            </div>
-            <div id="sourcesStatus" class="mt-12 text-muted">Статус: готов</div>
-        </div>
-
-        <!-- Правая колонка: результаты traffic_stats -->
-        <div class="card">
-            <h3>📊 Результаты измерения (traffic_stats)</h3>
-            <div id="trafficStatsResults">
-                <p class="text-muted">Нажмите «Измерить», чтобы получить данные.</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- УПРАВЛЕНИЕ РАСПИСАНИЕМ -->
-    <div class="card mt-12">
-        <h3>⏰ Управление расписанием парсинга</h3>
-        <div class="flex">
-            <label style="font-size:14px; color:#8892a0;">Cron-строка:</label>
-            <input type="text" id="cronInput" class="cron-input" placeholder="0 5 * * *" value="0 5 * * *">
-            <button class="btn btn-secondary" id="loadCronBtn">📂 Загрузить</button>
-            <button class="btn btn-success" id="saveCronBtn">💾 Сохранить</button>
-        </div>
-        <div id="cronStatus" class="mt-12 text-muted">Статус: готов</div>
-    </div>
-
     <!-- ПОСЛЕДНИЕ СТАТЬИ -->
-    <div class="card mt-12">
+    <div class="card">
         <h3>📰 Последние статьи</h3>
-        <div id="articlesContainer"><p class="text-muted">Загрузка статей...</p></div>
-    </div>
-
-    <!-- ПОСЛЕДНИЕ ВЕКТОРЫ -->
-    <div class="card mt-12">
-        <h3>🧬 Последние векторы</h3>
-        <div id="vectorsContainer"><p class="text-muted">Загрузка векторов...</p></div>
+        <div id="articlesContainer">
+            <p class="text-muted">Загрузка статей...</p>
+        </div>
     </div>
 
     <!-- ПОСЛЕДНИЕ ОТЧЁТЫ -->
     <div class="card mt-12">
         <h3>📄 Последние отчёты</h3>
-        <div id="reportsContainer"><p class="text-muted">Загрузка отчётов...</p></div>
+        <div id="reportsContainer">
+            <p class="text-muted">Загрузка отчётов...</p>
+        </div>
     </div>
 
 </div>
@@ -310,6 +256,10 @@
         traffic_stats: { url: '/traffic_stats', health: '/health' }
     };
 
+    // Базовый URL для API (Nginx проксирует /ingestor/run и т.д.)
+    // Если вы открываете dashboard.html локально, запросы будут к localhost:80
+    // Если через домен — укажите BASE_URL = '' (относительный путь)
+    // const BASE_URL = window.location.origin;  // берёт текущий хост (например, https://lithef.twc1.net)
     const BASE_URL = 'https://lithef.twc1.net';
 
     // ---------- DOM-элементы ----------
@@ -317,7 +267,6 @@
     const lastCheckEl = document.getElementById('lastCheck');
     const logArea = document.getElementById('logArea');
     const articlesContainer = document.getElementById('articlesContainer');
-    const vectorsContainer = document.getElementById('vectorsContainer');
     const reportsContainer = document.getElementById('reportsContainer');
     const runParserBtn = document.getElementById('runParserBtn');
     const runAnalysisBtn = document.getElementById('runAnalysisBtn');
@@ -327,24 +276,16 @@
     const weeksInput = document.getElementById('weeksInput');
     const timeBadge = document.getElementById('timeBadge');
 
-    // Новые элементы
-    const sourcesTextarea = document.getElementById('sourcesTextarea');
-    const loadSourcesBtn = document.getElementById('loadSourcesBtn');
-    const saveSourcesBtn = document.getElementById('saveSourcesBtn');
-    const measureSourcesBtn = document.getElementById('measureSourcesBtn');
-    const clearSourcesBtn = document.getElementById('clearSourcesBtn');
-    const sourcesStatus = document.getElementById('sourcesStatus');
-    const trafficStatsResults = document.getElementById('trafficStatsResults');
-    const cronInput = document.getElementById('cronInput');
-    const loadCronBtn = document.getElementById('loadCronBtn');
-    const saveCronBtn = document.getElementById('saveCronBtn');
-    const cronStatus = document.getElementById('cronStatus');
-
     // ---------- УТИЛИТЫ ----------
     function log(msg, type = 'info') {
         const color = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
         logArea.innerHTML += `<div class="${color}">${new Date().toLocaleTimeString()} — ${msg}</div>`;
         logArea.scrollTop = logArea.scrollHeight;
+    }
+
+    function clearLog() {
+        logArea.innerHTML = '';
+        log('Очищен');
     }
 
     function updateTime() {
@@ -361,7 +302,9 @@
         for (const [name, cfg] of Object.entries(SERVICES)) {
             const dot = items[i].querySelector('.dot');
             try {
-                const resp = await fetch(`${BASE_URL}${cfg.url}${cfg.health}`, { signal: AbortSignal.timeout(3000) });
+                const resp = await fetch(`${BASE_URL}${cfg.url}${cfg.health}`, {
+                    signal: AbortSignal.timeout(3000)
+                });
                 if (resp.ok) {
                     dot.className = 'dot green';
                 } else {
@@ -395,11 +338,16 @@
             const resp = await fetch(`${BASE_URL}/ingestor/run`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: 'admin', limit: limit })
+                body: JSON.stringify({
+                    user_id: 'admin',
+                    limit: limit
+                })
             });
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const data = await resp.json();
             log(`✅ Парсинг запущен: task_id=${data.task_id}`, 'success');
+
+            // Проверяем статус задачи через 3 секунды
             setTimeout(() => checkTaskStatus(data.task_id), 3000);
         } catch (e) {
             log(`❌ Ошибка: ${e.message}`, 'error');
@@ -415,8 +363,7 @@
             const data = await resp.json();
             if (data.status === 'completed') {
                 log(`✅ Задача ${taskId} завершена: ${data.result?.total_articles || 0} статей`, 'success');
-                loadArticles();
-                loadVectors();
+                loadArticles();  // обновляем список статей
             } else if (data.status === 'failed') {
                 log(`❌ Задача ${taskId} упала: ${data.error}`, 'error');
             } else {
@@ -443,7 +390,9 @@
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const data = await resp.json();
             log(`✅ Анализ завершён: drift_score=${data.drift_score?.toFixed(4) || '—'}`, 'success');
+            // Показываем результат в логе
             log(`📊 Сместившихся тем: ${data.shifted_topics?.length || 0}`, 'info');
+            // Автоматически генерируем отчёт
             await generateReport(data);
         } catch (e) {
             log(`❌ Ошибка анализа: ${e.message}`, 'error');
@@ -461,12 +410,16 @@
             const resp = await fetch(`${BASE_URL}/reporter/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: 'admin', analysis_result: analysisData })
+                body: JSON.stringify({
+                    user_id: 'admin',
+                    analysis_result: analysisData
+                })
             });
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const data = await resp.json();
             log(`✅ Отчёт сгенерирован: ${data.report_url}`, 'success');
-            loadReports();
+            loadReports();  // обновляем список отчётов
+            // Добавляем ссылку в лог
             log(`🔗 ${window.location.origin}${data.report_url}`, 'info');
         } catch (e) {
             log(`❌ Ошибка генерации отчёта: ${e.message}`, 'error');
@@ -480,7 +433,8 @@
         try {
             const resp = await fetch(`${BASE_URL}/storage/list?user_id=admin&file_type=articles&limit=10`);
             if (!resp.ok) {
-                articlesContainer.innerHTML = `<p class="text-muted">⚠️ Storage не отвечает.</p>`;
+                // Если storage не даёт статьи, пробуем читать локальные JSON (заглушка)
+                articlesContainer.innerHTML = `<p class="text-muted">⚠️ Storage не отвечает, попробуйте позже.</p>`;
                 return;
             }
             const files = await resp.json();
@@ -488,52 +442,22 @@
                 articlesContainer.innerHTML = `<p class="text-muted">Нет статей.</p>`;
                 return;
             }
+            // Показываем таблицу
             let html = `<div class="table-wrap"><table>
-                <thead><tr><th>Заголовок</th><th>Источник</th><th>Дата</th><th>Действие</th></tr></thead><tbody>`;
+                <thead><tr><th>Заголовок</th><th>Источник</th><th>Дата</th></tr></thead><tbody>`;
             for (const file of files) {
-                const meta = file.extra_metadata || {};
+                // Предполагаем, что в метаданных есть preview или title
+                const meta = file.metadata || {};
                 html += `<tr>
                     <td>${meta.title || file.file_key || '—'}</td>
                     <td><span class="tag">${meta.source || '—'}</span></td>
                     <td>${file.created_at ? new Date(file.created_at).toLocaleDateString() : '—'}</td>
-                    <td><a href="${BASE_URL}/storage/download/${file.id}" target="_blank" class="link">🔗 Открыть</a></td>
                 </tr>`;
             }
             html += `</tbody></table></div>`;
             articlesContainer.innerHTML = html;
         } catch (e) {
-            articlesContainer.innerHTML = `<p class="text-muted">⚠️ Ошибка: ${e.message}</p>`;
-        }
-    }
-
-    // ---------- ЗАГРУЗКА ВЕКТОРОВ ----------
-    async function loadVectors() {
-        try {
-            const resp = await fetch(`${BASE_URL}/storage/list?user_id=admin&file_type=vectors&limit=10`);
-            if (!resp.ok) {
-                vectorsContainer.innerHTML = `<p class="text-muted">⚠️ Storage не отвечает.</p>`;
-                return;
-            }
-            const files = await resp.json();
-            if (!files || files.length === 0) {
-                vectorsContainer.innerHTML = `<p class="text-muted">Нет векторов.</p>`;
-                return;
-            }
-            let html = `<div class="table-wrap"><table>
-                <thead><tr><th>Дата</th><th>Чанков</th><th>Источников</th><th>Действие</th></tr></thead><tbody>`;
-            for (const file of files) {
-                const meta = file.extra_metadata || {};
-                html += `<tr>
-                    <td>${file.created_at ? new Date(file.created_at).toLocaleDateString() : '—'}</td>
-                    <td>${meta.chunk_count || '—'}</td>
-                    <td>${meta.source_count || '—'}</td>
-                    <td><a href="${BASE_URL}/storage/download/${file.id}" target="_blank" class="link">⬇️ Скачать</a></td>
-                </tr>`;
-            }
-            html += `</tbody></table></div>`;
-            vectorsContainer.innerHTML = html;
-        } catch (e) {
-            vectorsContainer.innerHTML = `<p class="text-muted">⚠️ Ошибка: ${e.message}</p>`;
+            articlesContainer.innerHTML = `<p class="text-muted">⚠️ Не удалось загрузить статьи: ${e.message}</p>`;
         }
     }
 
@@ -547,199 +471,51 @@
             }
             const files = await resp.json();
             if (!files || files.length === 0) {
-                reportsContainer.innerHTML = `<p class="text-muted">Нет отчётов.</p>`;
+                reportsContainer.innerHTML = `<p class="text-muted">Нет сгенерированных отчётов.</p>`;
                 return;
             }
             let html = `<div class="table-wrap"><table>
                 <thead><tr><th>Дата</th><th>Файл</th><th>Ссылка</th></tr></thead><tbody>`;
             for (const file of files) {
+                const fileId = file.id;
                 const created = file.created_at ? new Date(file.created_at).toLocaleString() : '—';
                 const fileName = file.file_key || 'отчёт';
                 html += `<tr>
                     <td>${created}</td>
                     <td>${fileName}</td>
-                    <td><a href="${BASE_URL}/reports/${file.id}" target="_blank" class="link">🔗 Открыть</a></td>
+                    <td><a href="${BASE_URL}/reports/${fileId}" target="_blank" class="link">🔗 Открыть</a></td>
                 </tr>`;
             }
             html += `</tbody></table></div>`;
             reportsContainer.innerHTML = html;
         } catch (e) {
-            reportsContainer.innerHTML = `<p class="text-muted">⚠️ Ошибка: ${e.message}</p>`;
+            reportsContainer.innerHTML = `<p class="text-muted">⚠️ Ошибка загрузки отчётов: ${e.message}</p>`;
         }
     }
 
-    // ---------- УПРАВЛЕНИЕ СПИСКОМ САЙТОВ ----------
-    async function loadSources() {
-        sourcesStatus.textContent = '⏳ Загрузка...';
-        try {
-            const resp = await fetch(`${BASE_URL}/ingestor/admin/settings`);
-            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-            const data = await resp.json();
-            if (data.sources && data.sources.length > 0) {
-                sourcesTextarea.value = data.sources.join('\n');
-                sourcesStatus.textContent = `✅ Загружено ${data.sources.length} сайтов. Cron: ${data.schedule_cron || 'не задан'}`;
-            } else {
-                sourcesTextarea.value = '';
-                sourcesStatus.textContent = 'ℹ️ Ничего не сохранено.';
-            }
-            // Также обновляем поле cron
-            if (data.schedule_cron) {
-                cronInput.value = data.schedule_cron;
-            }
-        } catch (e) {
-            sourcesStatus.textContent = `❌ Ошибка: ${e.message}`;
-            log(`Ошибка загрузки списка: ${e.message}`, 'error');
-        }
-    }
-
-    async function saveSources() {
-        const sources = sourcesTextarea.value.split('\n').map(s => s.trim()).filter(s => s);
-        if (sources.length === 0) {
-            sourcesStatus.textContent = '⚠️ Список пуст. Введите хотя бы один сайт.';
-            return;
-        }
-        sourcesStatus.textContent = '⏳ Сохранение...';
-        try {
-            const resp = await fetch(`${BASE_URL}/ingestor/admin/settings`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sources: sources, schedule_cron: cronInput.value.trim() || '0 5 * * *' })
-            });
-            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-            const data = await resp.json();
-            sourcesStatus.textContent = `✅ Сохранено ${sources.length} сайтов.`;
-            log(`Список сайтов сохранён (${sources.length})`, 'success');
-        } catch (e) {
-            sourcesStatus.textContent = `❌ Ошибка: ${e.message}`;
-            log(`Ошибка сохранения списка: ${e.message}`, 'error');
-        }
-    }
-
-    async function measureSources() {
-        const sources = sourcesTextarea.value.split('\n').map(s => s.trim()).filter(s => s);
-        if (sources.length === 0) {
-            trafficStatsResults.innerHTML = '<p class="text-muted">⚠️ Список сайтов пуст. Введите сайты для измерения.</p>';
-            return;
-        }
-        trafficStatsResults.innerHTML = '<p class="text-muted">⏳ Измерение... (может занять до 30 секунд)</p>';
-        try {
-            const resp = await fetch(`${BASE_URL}/traffic_stats/analyze`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ domains: sources })
-            });
-            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-            const data = await resp.json();
-            if (data.results && data.results.length > 0) {
-                let html = `<div class="table-wrap"><table>
-                    <thead><tr><th>Домен</th><th>Ранг</th><th>Open Page Rank</th><th>Ссылающиеся домены</th></tr></thead><tbody>`;
-                for (const item of data.results) {
-                    html += `<tr>
-                        <td>${item.domain || '—'}</td>
-                        <td>${item.rank || '—'}</td>
-                        <td>${item.open_page_rank !== undefined ? item.open_page_rank.toFixed(2) : '—'}</td>
-                        <td>${item.referring_domains || '—'}</td>
-                    </tr>`;
-                }
-                html += `</tbody></table></div>`;
-                trafficStatsResults.innerHTML = html;
-                log(`Измерение завершено: ${data.results.length} доменов`, 'success');
-            } else {
-                trafficStatsResults.innerHTML = '<p class="text-muted">ℹ️ Нет данных для отображения.</p>';
-            }
-        } catch (e) {
-            trafficStatsResults.innerHTML = `<p class="text-muted">❌ Ошибка: ${e.message}</p>`;
-            log(`Ошибка измерения: ${e.message}`, 'error');
-        }
-    }
-
-    function clearSources() {
-        sourcesTextarea.value = '';
-        trafficStatsResults.innerHTML = '<p class="text-muted">Окна очищены.</p>';
-        sourcesStatus.textContent = '🗑️ Очищено';
-        log('Списки очищены', 'info');
-    }
-
-    // ---------- УПРАВЛЕНИЕ CRON ----------
-    async function loadCron() {
-        cronStatus.textContent = '⏳ Загрузка...';
-        try {
-            const resp = await fetch(`${BASE_URL}/ingestor/admin/settings`);
-            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-            const data = await resp.json();
-            if (data.schedule_cron) {
-                cronInput.value = data.schedule_cron;
-                cronStatus.textContent = `✅ Загружено: ${data.schedule_cron}`;
-            } else {
-                cronInput.value = '0 5 * * *';
-                cronStatus.textContent = 'ℹ️ Cron не задан, используется по умолчанию: 0 5 * * *';
-            }
-        } catch (e) {
-            cronStatus.textContent = `❌ Ошибка: ${e.message}`;
-            log(`Ошибка загрузки cron: ${e.message}`, 'error');
-        }
-    }
-
-    async function saveCron() {
-        const cron = cronInput.value.trim();
-        if (!cron) {
-            cronStatus.textContent = '⚠️ Введите корректную cron-строку.';
-            return;
-        }
-        cronStatus.textContent = '⏳ Сохранение...';
-        try {
-            // Получаем текущий список сайтов (чтобы не потерять)
-            const sources = sourcesTextarea.value.split('\n').map(s => s.trim()).filter(s => s);
-            const resp = await fetch(`${BASE_URL}/ingestor/admin/settings`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sources: sources, schedule_cron: cron })
-            });
-            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-            const data = await resp.json();
-            cronStatus.textContent = `✅ Сохранено: ${cron}`;
-            log(`Cron сохранён: ${cron}`, 'success');
-        } catch (e) {
-            cronStatus.textContent = `❌ Ошибка: ${e.message}`;
-            log(`Ошибка сохранения cron: ${e.message}`, 'error');
-        }
-    }
-
-    // ---------- ПРИВЯЗКА СОБЫТИЙ ----------
+    // ---------- ПРИВЯЗКА КНОПОК ----------
     runParserBtn.addEventListener('click', runParser);
     runAnalysisBtn.addEventListener('click', runAnalysis);
     generateReportBtn.addEventListener('click', () => {
+        // Если анализа нет — попробуем запустить его
         log('Запуск генерации отчёта без данных анализа — попробуйте сначала запустить анализ.', 'info');
     });
-
-    loadSourcesBtn.addEventListener('click', loadSources);
-    saveSourcesBtn.addEventListener('click', saveSources);
-    measureSourcesBtn.addEventListener('click', measureSources);
-    clearSourcesBtn.addEventListener('click', clearSources);
-
-    loadCronBtn.addEventListener('click', loadCron);
-    saveCronBtn.addEventListener('click', saveCron);
 
     // ---------- ИНИЦИАЛИЗАЦИЯ ----------
     async function init() {
         log('🚀 Загрузка админ-панели...', 'info');
         await checkStatuses();
         await loadArticles();
-        await loadVectors();
         await loadReports();
-        // Автоматически загружаем настройки при старте
-        await loadSources();
-        await loadCron();
         log('✅ Готово', 'success');
     }
 
     init();
 
-    // Автообновление
+    // Автообновление статусов и данных раз в 60 секунд
     setInterval(() => {
         checkStatuses();
         loadArticles();
-        loadVectors();
         loadReports();
     }, 60000);
 
