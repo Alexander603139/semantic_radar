@@ -46,9 +46,9 @@
             </div>
             <div class="flex mt-12" style="gap: 12px; align-items: center;">
                 <label style="font-size:14px; color:#8892a0;">Лимит статей:</label>
-                <input type="number" id="limitInput" class="input-sm" value="3" min="1" max="20">
+                <input type="number" id="limitInput" class="input-sm" value="3" min="1" max="20" style="width:80px;">
                 <label style="font-size:14px; color:#8892a0;">Недель:</label>
-                <input type="number" id="weeksInput" class="input-sm" value="2" min="1" max="4">
+                <input type="number" id="weeksInput" class="input-sm" value="2" min="1" max="4" style="width:80px;">
             </div>
             <div id="actionLog" class="mt-12">
                 <div class="log-area" id="logArea">📋 Готов к работе...</div>
@@ -56,10 +56,52 @@
         </div>
     </div>
 
+    <!-- УПРАВЛЕНИЕ СПИСКОМ САЙТОВ И CRON -->
+    <div class="grid-2col">
+        <!-- Левая колонка: список сайтов -->
+        <div class="card">
+            <h3>🌐 Управление списком сайтов</h3>
+            <textarea id="sourcesTextarea" placeholder="Введите сайты по одному на строку..."></textarea>
+            <div class="flex mt-12">
+                <button class="btn btn-secondary" id="loadSourcesBtn">📂 Загрузить</button>
+                <button class="btn btn-success" id="saveSourcesBtn">💾 Сохранить</button>
+                <button class="btn" id="measureSourcesBtn">📊 Измерить</button>
+                <button class="btn btn-danger" id="clearSourcesBtn">🗑️ Очистить</button>
+            </div>
+            <div id="sourcesStatus" class="mt-12 text-muted">Статус: готов</div>
+        </div>
+
+        <!-- Правая колонка: результаты traffic_stats -->
+        <div class="card">
+            <h3>📊 Результаты измерения (traffic_stats)</h3>
+            <div id="trafficStatsResults">
+                <p class="text-muted">Нажмите «Измерить», чтобы получить данные.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- УПРАВЛЕНИЕ РАСПИСАНИЕМ -->
+    <div class="card mt-12">
+        <h3>⏰ Управление расписанием парсинга</h3>
+        <div class="flex">
+            <label style="font-size:14px; color:#8892a0;">Cron-строка:</label>
+            <input type="text" id="cronInput" class="cron-input" placeholder="0 5 * * *" value="0 5 * * *">
+            <button class="btn btn-secondary" id="loadCronBtn">📂 Загрузить</button>
+            <button class="btn btn-success" id="saveCronBtn">💾 Сохранить</button>
+        </div>
+        <div id="cronStatus" class="mt-12 text-muted">Статус: готов</div>
+    </div>
+
     <!-- ПОСЛЕДНИЕ СТАТЬИ -->
-    <div class="card">
+    <div class="card mt-12">
         <h3>📰 Последние статьи</h3>
         <div id="articlesContainer"><p class="text-muted">Загрузка статей...</p></div>
+    </div>
+
+    <!-- ПОСЛЕДНИЕ ВЕКТОРЫ -->
+    <div class="card mt-12">
+        <h3>🧬 Последние векторы</h3>
+        <div id="vectorsContainer"><p class="text-muted">Загрузка векторов...</p></div>
     </div>
 
     <!-- ПОСЛЕДНИЕ ОТЧЁТЫ -->
@@ -69,6 +111,7 @@
     </div>
 
 </div>
+
 <script src="/app.js"></script>
 </body>
 </html>
