@@ -400,6 +400,49 @@ async function saveCron() {
     }
 }
 
+// ---------- УДАЛЕНИЕ ДАННЫХ ----------
+async function deleteVectors() {
+    if (!confirm('⚠️ Вы уверены, что хотите удалить ВСЕ векторы? Это действие необратимо!')) {
+        return;
+    }
+    const statusEl = document.getElementById('deleteStatus');
+    statusEl.textContent = '⏳ Удаление векторов...';
+    try {
+        const resp = await fetch(`${BASE_URL}/storage/delete_all?user_id=admin&file_type=vectors`, {
+            method: 'DELETE'
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        statusEl.textContent = `✅ Удалено ${data.deleted_count || 0} векторов.`;
+        log(`Удалены все векторы (${data.deleted_count || 0})`, 'success');
+        loadVectors(); // обновляем список
+    } catch (e) {
+        statusEl.textContent = `❌ Ошибка: ${e.message}`;
+        log(`Ошибка удаления векторов: ${e.message}`, 'error');
+    }
+}
+
+async function deleteReports() {
+    if (!confirm('⚠️ Вы уверены, что хотите удалить ВСЕ отчёты? Это действие необратимо!')) {
+        return;
+    }
+    const statusEl = document.getElementById('deleteStatus');
+    statusEl.textContent = '⏳ Удаление отчётов...';
+    try {
+        const resp = await fetch(`${BASE_URL}/storage/delete_all?user_id=admin&file_type=reports`, {
+            method: 'DELETE'
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        statusEl.textContent = `✅ Удалено ${data.deleted_count || 0} отчётов.`;
+        log(`Удалены все отчёты (${data.deleted_count || 0})`, 'success');
+        loadReports(); // обновляем список
+    } catch (e) {
+        statusEl.textContent = `❌ Ошибка: ${e.message}`;
+        log(`Ошибка удаления отчётов: ${e.message}`, 'error');
+    }
+}
+
 // ---------- ПРИВЯЗКА СОБЫТИЙ ----------
 runParserBtn.addEventListener('click', runParser);
 runAnalysisBtn.addEventListener('click', runAnalysis);
@@ -414,6 +457,9 @@ clearSourcesBtn.addEventListener('click', clearSources);
 
 loadCronBtn.addEventListener('click', loadCron);
 saveCronBtn.addEventListener('click', saveCron);
+
+document.getElementById('deleteVectorsBtn').addEventListener('click', deleteVectors);
+document.getElementById('deleteReportsBtn').addEventListener('click', deleteReports);
 
 // ---------- ИНИЦИАЛИЗАЦИЯ ----------
 async function init() {
