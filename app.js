@@ -400,13 +400,13 @@ async function saveCron() {
     }
 }
 
-// ---------- УДАЛЕНИЕ ДАННЫХ ----------
+// ---------- УДАЛЕНИЕ ВЕКТОРОВ ----------
 async function deleteVectors() {
     if (!confirm('⚠️ Вы уверены, что хотите удалить ВСЕ векторы? Это действие необратимо!')) {
         return;
     }
-    const statusEl = document.getElementById('deleteStatus');
-    statusEl.textContent = '⏳ Удаление векторов...';
+    const statusEl = document.getElementById('deleteVectorsStatus');
+    statusEl.textContent = '⏳ Удаление...';
     try {
         const resp = await fetch(`${BASE_URL}/storage/delete_all?user_id=admin&file_type=vectors`, {
             method: 'DELETE'
@@ -415,19 +415,20 @@ async function deleteVectors() {
         const data = await resp.json();
         statusEl.textContent = `✅ Удалено ${data.deleted_count || 0} векторов.`;
         log(`Удалены все векторы (${data.deleted_count || 0})`, 'success');
-        loadVectors(); // обновляем список
+        loadVectors();
     } catch (e) {
         statusEl.textContent = `❌ Ошибка: ${e.message}`;
         log(`Ошибка удаления векторов: ${e.message}`, 'error');
     }
 }
 
+// ---------- УДАЛЕНИЕ ОТЧЁТОВ ----------
 async function deleteReports() {
     if (!confirm('⚠️ Вы уверены, что хотите удалить ВСЕ отчёты? Это действие необратимо!')) {
         return;
     }
-    const statusEl = document.getElementById('deleteStatus');
-    statusEl.textContent = '⏳ Удаление отчётов...';
+    const statusEl = document.getElementById('deleteReportsStatus');
+    statusEl.textContent = '⏳ Удаление...';
     try {
         const resp = await fetch(`${BASE_URL}/storage/delete_all?user_id=admin&file_type=reports`, {
             method: 'DELETE'
@@ -436,7 +437,7 @@ async function deleteReports() {
         const data = await resp.json();
         statusEl.textContent = `✅ Удалено ${data.deleted_count || 0} отчётов.`;
         log(`Удалены все отчёты (${data.deleted_count || 0})`, 'success');
-        loadReports(); // обновляем список
+        loadReports();
     } catch (e) {
         statusEl.textContent = `❌ Ошибка: ${e.message}`;
         log(`Ошибка удаления отчётов: ${e.message}`, 'error');
