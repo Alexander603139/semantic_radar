@@ -87,6 +87,26 @@ async def list_files(
     files = crud.get_files(db, user_id, file_type, limit)
     return [schemas.FileResponse.model_validate(f) for f in files]
 
+@router.delete("/delete_all")
+async def delete_all_files(
+    user_id: str,
+    file_type: schemas.FileType,
+    db: Session = Depends(get_db)
+):
+    """Удаляет все файлы указанного типа для пользователя (мягкое удаление)."""
+    files = crud.get_files(db, user_id, file_type, limit=10000)
+    deleted_count = 0
+    for f in files:
+        # Удаляем из S3
+        try:
+            s3_client.delete_file(f.storage_path)
+        except Exception as e:
+            logger.error(f"Failed to delete from S3: {e}")
+        # Мягкое удаление в БД
+        crud.delete_file_record(db, f.id)
+        deleted_count += 1
+    return {"status": "ok", "deleted_count": deleted_count}
+
 @router.delete("/{file_id}")
 async def delete_file(file_id: str, db: Session = Depends(get_db)):
     db_file = crud.get_file_record(db, file_id)
@@ -136,23 +156,3 @@ async def update_user_settings(
     db.commit()
     db.refresh(settings)
     return {"status": "ok", "user_id": user_id}
-
-@router.delete("/delete_all")
-async def delete_all_files(
-    user_id: str,
-    file_type: schemas.FileType,
-    db: Session = Depends(get_db)
-):
-    """Удаляет все файлы указанного типа для пользователя (мягкое удаление)."""
-    files = crud.get_files(db, user_id, file_type, limit=10000)
-    deleted_count = 0
-    for f in files:
-        # Удаляем из S3
-        try:
-            s3_client.delete_file(f.storage_path)
-        except Exception as e:
-            logger.error(f"Failed to delete from S3: {e}")
-        # Мягкое удаление в БД
-        crud.delete_file_record(db, f.id)
-        deleted_count += 1
-    return {"status": "ok", "deleted_count": deleted_count}
