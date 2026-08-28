@@ -29,7 +29,7 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int) -> str:
             articles = await fetch_articles_from_source(site, limit=limit)
             if articles:
                 all_articles.extend(articles)
-                
+
                 # # Сохраняем JSON для источника (как раньше)
                 # source_name = site.split('/')[2]
                 # date_str = datetime.now().strftime('%Y-%m-%d')
@@ -75,10 +75,16 @@ async def save_articles_to_storage(user_id: str, articles: List[Article], source
     filename = f"{source_name}_{date_str}.json"
     
     # Формируем JSON
+    # json_data = json.dumps(
+    #     [art.model_dump(mode='json', exclude_none=True, default=str) for art in articles],
+    #     ensure_ascii=False,
+    #     indent=2
+    # )
     json_data = json.dumps(
-        [art.model_dump(mode='json', exclude_none=True, default=str) for art in articles],
+        [art.model_dump(mode='json', exclude_none=True) for art in articles],
         ensure_ascii=False,
-        indent=2
+        indent=2,
+        default=str
     )
     file_bytes = io.BytesIO(json_data.encode('utf-8'))
     
@@ -105,9 +111,17 @@ async def save_articles_to_storage(user_id: str, articles: List[Article], source
             # fallback: сохранить локально
             os.makedirs(settings.OUTPUT_DIR, exist_ok=True)
             filepath = os.path.join(settings.OUTPUT_DIR, filename)
+            # with open(filepath, 'w', encoding='utf-8') as f:
+            #     json.dump(
+            #         [art.model_dump(mode='json', exclude_none=True, default=str) for art in articles],
+            #         f,
+            #         ensure_ascii=False,
+            #         indent=2,
+            #         default=str
+            #     )
             with open(filepath, 'w', encoding='utf-8') as f:
                 json.dump(
-                    [art.model_dump(mode='json', exclude_none=True, default=str) for art in articles],
+                    [art.model_dump(mode='json', exclude_none=True) for art in articles],
                     f,
                     ensure_ascii=False,
                     indent=2,
