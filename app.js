@@ -444,6 +444,68 @@ async function deleteReports() {
     }
 }
 
+// ---------- УДАЛЕНИЕ ПОСЛЕДНЕГО ВЕКТОРА ----------
+async function deleteLastVector() {
+    if (!confirm('⚠️ Вы уверены, что хотите удалить последний вектор? Это действие необратимо!')) {
+        return;
+    }
+    const statusEl = document.getElementById('deleteVectorsStatus');
+    statusEl.textContent = '⏳ Удаление...';
+    try {
+        // Сначала получаем список векторов
+        const listResp = await fetch(`${BASE_URL}/storage/list?user_id=admin&file_type=vectors&limit=1`);
+        if (!listResp.ok) throw new Error(`HTTP ${listResp.status}`);
+        const files = await listResp.json();
+        if (!files || files.length === 0) {
+            statusEl.textContent = 'ℹ️ Нет векторов для удаления.';
+            return;
+        }
+        const fileId = files[0].id;
+        const resp = await fetch(`${BASE_URL}/storage/${fileId}`, {
+            method: 'DELETE'
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        statusEl.textContent = `✅ Удалён последний вектор.`;
+        log(`Удалён вектор ${fileId}`, 'success');
+        loadVectors();
+    } catch (e) {
+        statusEl.textContent = `❌ Ошибка: ${e.message}`;
+        log(`Ошибка удаления последнего вектора: ${e.message}`, 'error');
+    }
+}
+
+// ---------- УДАЛЕНИЕ ПОСЛЕДНЕГО ОТЧЁТА ----------
+async function deleteLastReport() {
+    if (!confirm('⚠️ Вы уверены, что хотите удалить последний отчёт? Это действие необратимо!')) {
+        return;
+    }
+    const statusEl = document.getElementById('deleteReportsStatus');
+    statusEl.textContent = '⏳ Удаление...';
+    try {
+        // Сначала получаем список отчётов
+        const listResp = await fetch(`${BASE_URL}/storage/list?user_id=admin&file_type=reports&limit=1`);
+        if (!listResp.ok) throw new Error(`HTTP ${listResp.status}`);
+        const files = await listResp.json();
+        if (!files || files.length === 0) {
+            statusEl.textContent = 'ℹ️ Нет отчётов для удаления.';
+            return;
+        }
+        const fileId = files[0].id;
+        const resp = await fetch(`${BASE_URL}/storage/${fileId}`, {
+            method: 'DELETE'
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        statusEl.textContent = `✅ Удалён последний отчёт.`;
+        log(`Удалён отчёт ${fileId}`, 'success');
+        loadReports();
+    } catch (e) {
+        statusEl.textContent = `❌ Ошибка: ${e.message}`;
+        log(`Ошибка удаления последнего отчёта: ${e.message}`, 'error');
+    }
+}
+
 // ---------- ПРИВЯЗКА СОБЫТИЙ ----------
 runParserBtn.addEventListener('click', runParser);
 runAnalysisBtn.addEventListener('click', runAnalysis);
@@ -461,6 +523,8 @@ saveCronBtn.addEventListener('click', saveCron);
 
 document.getElementById('deleteVectorsBtn').addEventListener('click', deleteVectors);
 document.getElementById('deleteReportsBtn').addEventListener('click', deleteReports);
+document.getElementById('deleteLastVectorBtn').addEventListener('click', deleteLastVector);
+document.getElementById('deleteLastReportBtn').addEventListener('click', deleteLastReport);
 
 // ---------- ИНИЦИАЛИЗАЦИЯ ----------
 async function init() {
