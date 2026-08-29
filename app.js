@@ -465,8 +465,14 @@ async function deleteLastVector() {
             method: 'DELETE'
         });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        // const data = await resp.json();
+        // statusEl.textContent = `✅ Удалён последний вектор.`;
         const data = await resp.json();
-        statusEl.textContent = `✅ Удалён последний вектор.`;
+        if (data.status === 'deleted') {
+            statusEl.textContent = `✅ Удалён последний вектор.`;
+        } else {
+            throw new Error('Не удалось удалить вектор');
+        }
         log(`Удалён вектор ${fileId}`, 'success');
         loadVectors();
     } catch (e) {
@@ -496,8 +502,14 @@ async function deleteLastReport() {
             method: 'DELETE'
         });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        // const data = await resp.json();
+        // statusEl.textContent = `✅ Удалён последний отчёт.`;
         const data = await resp.json();
-        statusEl.textContent = `✅ Удалён последний отчёт.`;
+        if (data.status === 'deleted') {
+            statusEl.textContent = `✅ Удалён последний отчёт.`;
+        } else {
+            throw new Error('Не удалось удалить отчёт');
+        }
         log(`Удалён отчёт ${fileId}`, 'success');
         loadReports();
     } catch (e) {
