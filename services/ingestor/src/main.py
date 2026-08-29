@@ -15,10 +15,11 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_scheduler()
-    # Загружаем настройки пользователя
+    # Сначала загружаем настройки
     user_settings = await load_user_settings("admin")
     app.state.user_settings = user_settings
+    # Потом инициализируем планировщик с этими настройками
+    init_scheduler(cron=user_settings.get("schedule_cron", settings.SCHEDULE_CRON))
     logger.info(f"Loaded settings: {user_settings}")
     yield
     logger.info("Ingestor service shutting down")

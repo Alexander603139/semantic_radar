@@ -17,9 +17,12 @@ async def scheduled_job():
     # Для прототипа используем фиксированный список и лимит
     await run_parsing_task("scheduled_user", SOURCES, 5)
 
-def init_scheduler():
+def init_scheduler(cron: str = None):
     """Инициализирует планировщик и добавляет задачу"""
-    trigger = CronTrigger.from_crontab(SCHEDULE_CRON)
+    global scheduler
+    if cron is None:
+        cron = settings.SCHEDULE_CRON
+    trigger = CronTrigger.from_crontab(cron)
     scheduler.add_job(scheduled_job, trigger=trigger, id="weekly_parsing")
     scheduler.start()
-    logger.info(f"Планировщик запущен с расписанием: {SCHEDULE_CRON}")
+    logger.info(f"Планировщик запущен с расписанием: {cron}")

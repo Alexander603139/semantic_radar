@@ -24,8 +24,8 @@ async def update_settings(data: UpdateSettingsRequest):
             raise HTTPException(status_code=resp.status_code, detail="Failed to update settings")
         
         # TODO: Перезапустить планировщик с новым cron (если нужно)
-        # from .scheduler import scheduler, scheduled_job
-        # scheduler.reschedule_job("weekly_parsing", trigger="cron", **parse_cron(data.schedule_cron))
+        from .scheduler import scheduler, scheduled_job
+        scheduler.reschedule_job("weekly_parsing", trigger="cron", **parse_cron(data.schedule_cron))
         
         return {"status": "ok", "message": "Settings updated successfully"}
 
@@ -39,3 +39,31 @@ async def get_settings():
         if resp.status_code != 200:
             raise HTTPException(status_code=resp.status_code, detail="Failed to get settings")
         return resp.json()
+
+def parse_cron(cron_str: str) -> dict:
+    parts = cron_str.split()
+    if len(parts) != 5:
+        raise ValueError("Invalid cron format")
+    return {
+        "minute": parts[0],
+        "hour": parts[1],
+        "day": parts[2],
+        "month": parts[3],
+        "day_of_week": parts[4]
+    }
+
+@router.post("/admin/settings")
+async def update_settings(data: UpdateSettingsRequest):
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{settings.STORAGE_URL}/settings/admin",
+            json={"sources": data.sources, "schedule_cron": data.schedule_cron}
+        )
+        if resp.status_code != 200:
+            raise HTTPException(status_code=resp.status_code, detail="Failed to update settings")
+        
+        # Перезапускаем планировщик с новым cron
+        from .scheduler import scheduler, scheduled_job
+        scheduler.reschedule_job("weekly_parsing", trigger="cron", **parse_cron(data.schedule_cron))
+        
+        return {"status": "ok", "message": "Settings updated successfully"}
