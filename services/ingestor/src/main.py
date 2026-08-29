@@ -19,7 +19,9 @@ async def lifespan(app: FastAPI):
     user_settings = await load_user_settings("admin")
     app.state.user_settings = user_settings
     # Потом инициализируем планировщик с этими настройками
-    init_scheduler(cron=user_settings.get("schedule_cron", settings.SCHEDULE_CRON))
+    sources = user_settings.get("sources", settings.SOURCES)
+    cron = user_settings.get("schedule_cron", settings.SCHEDULE_CRON)
+    init_scheduler(cron=cron, sources=sources)
     logger.info(f"Loaded settings: {user_settings}")
     yield
     logger.info("Ingestor service shutting down")
