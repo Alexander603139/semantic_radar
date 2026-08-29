@@ -8,6 +8,7 @@ const SERVICES = {
 };
 
 const BASE_URL = 'https://lithef.twc1.net';
+let lastAnalysisResult = null;
 
 // ---------- DOM-элементы ----------
 const statusContainer = document.getElementById('statusContainer');
@@ -139,9 +140,10 @@ async function runAnalysis() {
         });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
+        lastAnalysisResult = data;
         log(`✅ Анализ завершён: drift_score=${data.drift_score?.toFixed(4) || '—'}`, 'success');
         log(`📊 Сместившихся тем: ${data.shifted_topics?.length || 0}`, 'info');
-        await generateReport(data);
+        // await generateReport(data); закомментировано чтобы анализ и отчёт были независимыми
     } catch (e) {
         log(`❌ Ошибка анализа: ${e.message}`, 'error');
     } finally {
@@ -521,10 +523,16 @@ async function deleteLastReport() {
 // ---------- ПРИВЯЗКА СОБЫТИЙ ----------
 runParserBtn.addEventListener('click', runParser);
 runAnalysisBtn.addEventListener('click', runAnalysis);
-generateReportBtn.addEventListener('click', () => {
-    log('Запуск генерации отчёта без данных анализа — попробуйте сначала запустить анализ.', 'info');
+// generateReportBtn.addEventListener('click', () => {
+//     log('Запуск генерации отчёта без данных анализа — попробуйте сначала запустить анализ.', 'info');
+// });
+generateReportBtn.addEventListener('click', async () => {
+    if (!lastAnalysisResult) {
+        log('Нет данных анализа. Сначала запустите анализ.', 'error');
+        return;
+    }
+    await generateReport(lastAnalysisResult);
 });
-
 loadSourcesBtn.addEventListener('click', loadSources);
 saveSourcesBtn.addEventListener('click', saveSources);
 measureSourcesBtn.addEventListener('click', measureSources);
