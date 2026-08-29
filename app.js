@@ -520,6 +520,62 @@ async function deleteLastReport() {
     }
 }
 
+// ---------- УДАЛЕНИЕ ВСЕХ СТАТЕЙ ----------
+async function deleteAllArticles() {
+    if (!confirm('⚠️ Вы уверены, что хотите удалить ВСЕ статьи? Это действие необратимо!')) {
+        return;
+    }
+    const statusEl = document.getElementById('deleteArticlesStatus');
+    statusEl.textContent = '⏳ Удаление...';
+    try {
+        const resp = await fetch(`${BASE_URL}/storage/delete_all?user_id=admin&file_type=articles`, {
+            method: 'DELETE'
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        statusEl.textContent = `✅ Удалено ${data.deleted_count || 0} статей.`;
+        log(`Удалены все статьи (${data.deleted_count || 0})`, 'success');
+        loadArticles();
+    } catch (e) {
+        statusEl.textContent = `❌ Ошибка: ${e.message}`;
+        log(`Ошибка удаления статей: ${e.message}`, 'error');
+    }
+}
+
+// ---------- УДАЛЕНИЕ ПОСЛЕДНЕЙ СТАТЬИ ----------
+async function deleteLastArticle() {
+    if (!confirm('⚠️ Вы уверены, что хотите удалить последнюю статью? Это действие необратимо!')) {
+        return;
+    }
+    const statusEl = document.getElementById('deleteArticlesStatus');
+    statusEl.textContent = '⏳ Удаление...';
+    try {
+        const listResp = await fetch(`${BASE_URL}/storage/list?user_id=admin&file_type=articles&limit=1`);
+        if (!listResp.ok) throw new Error(`HTTP ${listResp.status}`);
+        const files = await listResp.json();
+        if (!files || files.length === 0) {
+            statusEl.textContent = 'ℹ️ Нет статей для удаления.';
+            return;
+        }
+        const fileId = files[0].id;
+        const resp = await fetch(`${BASE_URL}/storage/${fileId}`, {
+            method: 'DELETE'
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        if (data.status === 'deleted') {
+            statusEl.textContent = `✅ Удалена последняя статья.`;
+            log(`Удалена статья ${fileId}`, 'success');
+        } else {
+            throw new Error('Не удалось удалить статью');
+        }
+        loadArticles();
+    } catch (e) {
+        statusEl.textContent = `❌ Ошибка: ${e.message}`;
+        log(`Ошибка удаления последней статьи: ${e.message}`, 'error');
+    }
+}
+
 // ---------- ПРИВЯЗКА СОБЫТИЙ ----------
 runParserBtn.addEventListener('click', runParser);
 runAnalysisBtn.addEventListener('click', runAnalysis);
@@ -545,6 +601,8 @@ document.getElementById('deleteVectorsBtn').addEventListener('click', deleteVect
 document.getElementById('deleteReportsBtn').addEventListener('click', deleteReports);
 document.getElementById('deleteLastVectorBtn').addEventListener('click', deleteLastVector);
 document.getElementById('deleteLastReportBtn').addEventListener('click', deleteLastReport);
+document.getElementById('deleteAllArticlesBtn').addEventListener('click', deleteAllArticles);
+document.getElementById('deleteLastArticleBtn').addEventListener('click', deleteLastArticle);
 
 // ---------- ИНИЦИАЛИЗАЦИЯ ----------
 async function init() {
