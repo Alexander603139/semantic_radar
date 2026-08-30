@@ -54,6 +54,33 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int) -> str:
             if not success:
                 logger.warning(f"Embedder не смог обработать статьи для {user_id}, но парсинг выполнен.")
 
+                # --- АВТОМАТИЧЕСКИЙ АНАЛИЗ И ОТЧЁТ ---
+        if all_articles:
+            logger.info(f"Запуск автоматического анализа и генерации отчёта для {user_id}")
+            try:
+                async with httpx.AsyncClient(timeout=60.0) as client:
+                    # 1. Анализ
+                    analyze_resp = await client.post(
+                        "http://analyzer:8004/analyze",
+                        json={"user_id": user_id, "weeks": 2}
+                    )
+                    analyze_resp.raise_for_status()
+                    analysis_data = analyze_resp.json()
+                    logger.info(f"Анализ выполнен успешно для {user_id}")
+
+                    # 2. Отчёт
+                    report_resp = await client.post(
+                        "http://reporter:8005/generate",
+                        json={"user_id": user_id, "analysis_result": analysis_data}
+                    )
+                    report_resp.raise_for_status()
+                    report_data = report_resp.json()
+                    logger.info(f"Отчёт сгенерирован: {report_data.get('report_url')}")
+
+            except Exception as e:
+                logger.error(f"Ошибка при автоматическом анализе/отчёте для {user_id}: {e}")
+                # Не прерываем выполнение задачи
+
         tasks_store[task_id]["status"] = "completed"
         tasks_store[task_id]["result"] = {
             "total_articles": len(all_articles),
