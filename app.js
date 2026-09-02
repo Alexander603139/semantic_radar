@@ -284,6 +284,12 @@ async function loadSources() {
         if (data.schedule_cron) {
             cronInput.value = data.schedule_cron;
         }
+        // Установить timezone
+        if (data.timezone) {
+            timezoneSelect.value = data.timezone;
+        } else {
+            timezoneSelect.value = 'UTC';
+        }
     } catch (e) {
         sourcesStatus.textContent = `❌ Ошибка: ${e.message}`;
         log(`Ошибка загрузки списка: ${e.message}`, 'error');
@@ -301,7 +307,11 @@ async function saveSources() {
         const resp = await fetch(`${BASE_URL}/ingestor/admin/settings`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sources: sources, schedule_cron: cronInput.value.trim() || '0 5 * * *' })
+            body: JSON.stringify({
+                sources: sources,
+                schedule_cron: cronInput.value.trim() || '0 5 * * *',
+                timezone: timezoneSelect.value
+            })
         });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
@@ -372,6 +382,11 @@ async function loadCron() {
             cronInput.value = '0 5 * * *';
             cronStatus.textContent = 'ℹ️ Cron не задан, используется по умолчанию: 0 5 * * *';
         }
+        if (data.timezone) {
+            timezoneSelect.value = data.timezone;
+        } else {
+            timezoneSelect.value = 'UTC';
+        }
     } catch (e) {
         cronStatus.textContent = `❌ Ошибка: ${e.message}`;
         log(`Ошибка загрузки cron: ${e.message}`, 'error');
@@ -390,12 +405,16 @@ async function saveCron() {
         const resp = await fetch(`${BASE_URL}/ingestor/admin/settings`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sources: sources, schedule_cron: cron })
+            body: JSON.stringify({
+                sources: sources,
+                schedule_cron: cron,
+                timezone: timezoneSelect.value
+            })
         });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
-        cronStatus.textContent = `✅ Сохранено: ${cron}`;
-        log(`Cron сохранён: ${cron}`, 'success');
+        cronStatus.textContent = `✅ Сохранено: ${cron}, timezone: ${timezoneSelect.value}`;
+        log(`Cron и timezone сохранены: ${cron}, ${timezoneSelect.value}`, 'success');
     } catch (e) {
         cronStatus.textContent = `❌ Ошибка: ${e.message}`;
         log(`Ошибка сохранения cron: ${e.message}`, 'error');

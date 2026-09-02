@@ -32,7 +32,8 @@ class Settings(BaseSettings):
     )
     MIN_TEXT_LENGTH: int = 100
     DEFAULT_TIMEOUT: float = 30.0
-
+    DEFAULT_TIMEZONE: str = "UTC"
+    
     # Для тестов можно изменить на "* * * * *" (каждую минуту)
     SCHEDULE_CRON: str = "0 5 * * *"
     # SCHEDULE_CRON: str = "* * * * *"

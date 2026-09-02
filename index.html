@@ -81,11 +81,29 @@
     </div>
 
     <!-- УПРАВЛЕНИЕ РАСПИСАНИЕМ -->
-    <div class="card mt-12">
+    <!-- <div class="card mt-12">
         <h3>⏰ Управление расписанием парсинга</h3>
         <div class="flex">
             <label style="font-size:14px; color:#8892a0;">Cron-строка:</label>
             <input type="text" id="cronInput" class="cron-input" placeholder="0 5 * * *" value="0 5 * * *">
+            <button class="btn btn-secondary" id="loadCronBtn">📂 Загрузить</button>
+            <button class="btn btn-success" id="saveCronBtn">💾 Сохранить</button>
+        </div>
+        <div id="cronStatus" class="mt-12 text-muted">Статус: готов</div>
+    </div> -->
+    <div class="card mt-12">
+    <h3>⏰ Управление расписанием парсинга</h3>
+        <div class="flex" style="flex-wrap: wrap; gap: 10px;">
+            <label style="font-size:14px; color:#8892a0;">Cron-строка:</label>
+            <input type="text" id="cronInput" class="cron-input" placeholder="0 5 * * *" value="0 5 * * *">
+            <label style="font-size:14px; color:#8892a0;">Часовой пояс:</label>
+            <select id="timezoneSelect">
+                <option value="UTC">UTC</option>
+                <option value="Europe/Moscow">Москва (MSK)</option>
+                <option value="Asia/Yekaterinburg">Екатеринбург</option>
+                <option value="Asia/Novosibirsk">Новосибирск</option>
+                <option value="Asia/Vladivostok">Владивосток</option>
+            </select>
             <button class="btn btn-secondary" id="loadCronBtn">📂 Загрузить</button>
             <button class="btn btn-success" id="saveCronBtn">💾 Сохранить</button>
         </div>
