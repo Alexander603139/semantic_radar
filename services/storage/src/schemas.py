@@ -63,6 +63,7 @@ class UserSettingsUpdate(BaseModel):
     active_model_slug: Optional[str] = None
 
 class UserSettingsResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)  # <-- КРИТИЧЕСКИ ВАЖНО!
     user_id: str
     sources: Optional[List[str]] = None
     schedule_cron: Optional[str] = None
