@@ -7,17 +7,14 @@ from sqlalchemy.orm import Session
 from fastapi.responses import Response
 from .database import SessionLocal
 from . import crud, schemas, s3_client
-from .models import UserSettings
+from .models import UserSettings, AIModel
 from pydantic import BaseModel
 from typing import List, Optional
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-class UserSettingsUpdate(BaseModel):
-    sources: List[str]
-    schedule_cron: Optional[str] = "0 5 * * *"
-
+# ВАЖНО: get_db() должен быть определен ПЕРЕД роутами
 def get_db():
     db = SessionLocal()
     try:
@@ -34,23 +31,16 @@ async def upload_file(
     metadata: str = Form(None),
     db: Session = Depends(get_db),
 ):
-    # Читаем файл
     file_data = await file.read()
-
-    # Считаем checksum (опционально)
     checksum = hashlib.md5(file_data).hexdigest()
-
-    # Формируем ключ в S3: user_id/file_type/file_key
     s3_key = f"{user_id}/{file_type.value}/{file_key}"
-
-    # Загружаем в S3
+    
     try:
         s3_client.upload_file(file_data, s3_key)
     except Exception as e:
         logger.error(f"Failed to upload to S3: {e}")
         raise HTTPException(status_code=500, detail="S3 upload failed")
-
-    # Сохраняем метаданные в БД
+    
     file_create = schemas.FileCreate(
         user_id=user_id,
         file_type=file_type,
@@ -61,14 +51,12 @@ async def upload_file(
     return schemas.FileResponse.model_validate(db_file)
 
 @router.get("/download/{file_id}")
-# @router.get("/{file_id}")
 async def download_file(file_id: str, db: Session = Depends(get_db)):
     db_file = crud.get_file_record(db, file_id)
     if not db_file:
         raise HTTPException(status_code=404, detail="File not found")
     try:
         file_data = s3_client.download_file(db_file.storage_path)
-        # Определяем content-type по расширению файла
         content_type, _ = mimetypes.guess_type(db_file.file_key)
         if not content_type:
             content_type = "application/octet-stream"
@@ -97,12 +85,10 @@ async def delete_all_files(
     files = crud.get_files(db, user_id, file_type, limit=10000)
     deleted_count = 0
     for f in files:
-        # Удаляем из S3
         try:
             s3_client.delete_file(f.storage_path)
         except Exception as e:
             logger.error(f"Failed to delete from S3: {e}")
-        # Мягкое удаление в БД
         crud.delete_file_record(db, f.id)
         deleted_count += 1
     return {"status": "ok", "deleted_count": deleted_count}
@@ -112,47 +98,50 @@ async def delete_file(file_id: str, db: Session = Depends(get_db)):
     db_file = crud.get_file_record(db, file_id)
     if not db_file:
         raise HTTPException(status_code=404, detail="File not found")
-    # Удаляем из S3
     try:
         s3_client.delete_file(db_file.storage_path)
     except Exception as e:
         logger.error(f"Failed to delete from S3: {e}")
-        # Можно продолжить, но логируем
-    # Мягкое удаление в БД
     crud.delete_file_record(db, file_id)
     return {"status": "deleted"}
 
-@router.get("/settings/{user_id}")
+@router.get("/settings/{user_id}", response_model=schemas.UserSettingsResponse)
 async def get_user_settings(user_id: str, db: Session = Depends(get_db)):
     settings = db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
     if not settings:
-        # Если настроек нет, создаём с дефолтными значениями
         settings = UserSettings(
-            user_id=user_id,
-            sources=[],  # или список по умолчанию
-            schedule_cron="0 5 * * *"
+            user_id=user_id, sources=[], schedule_cron="0 5 * * *",
+            threshold=0.6, active_model_slug="e5-base-local"
         )
         db.add(settings)
         db.commit()
         db.refresh(settings)
-    return {
-        "user_id": settings.user_id,
-        "sources": settings.sources,
-        "schedule_cron": settings.schedule_cron
-    }
+    return schemas.UserSettingsResponse.model_validate(settings)
 
-@router.post("/settings/{user_id}")
-async def update_user_settings(
-    user_id: str,
-    data: UserSettingsUpdate,
-    db: Session = Depends(get_db)
-):
+@router.post("/settings/{user_id}", response_model=schemas.UserSettingsResponse)
+async def update_user_settings(user_id: str, data: schemas.UserSettingsUpdate, db: Session = Depends(get_db)):
     settings = db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
     if not settings:
         settings = UserSettings(user_id=user_id)
         db.add(settings)
-    settings.sources = data.sources
-    settings.schedule_cron = data.schedule_cron
+    
+    if data.sources is not None: settings.sources = data.sources
+    if data.schedule_cron is not None: settings.schedule_cron = data.schedule_cron
+    if data.context is not None: settings.context = data.context
+    if data.threshold is not None: settings.threshold = data.threshold
+    if data.active_model_slug is not None: settings.active_model_slug = data.active_model_slug
+    
     db.commit()
     db.refresh(settings)
-    return {"status": "ok", "user_id": user_id}
+    return schemas.UserSettingsResponse.model_validate(settings)
+
+@router.get("/ai-models", response_model=List[schemas.AIModelResponse])
+async def list_ai_models(is_active: bool = None, db: Session = Depends(get_db)):
+    models = crud.get_ai_models(db, is_active)
+    return [schemas.AIModelResponse.model_validate(m) for m in models]
+
+@router.post("/ai-models", response_model=schemas.AIModelResponse)
+async def create_ai_model(model: schemas.AIModelCreate, db: Session = Depends(get_db)):
+    if crud.get_ai_model_by_slug(db, model.slug):
+        raise HTTPException(status_code=400, detail="Model with this slug already exists")
+    return crud.create_ai_model(db, model)
