@@ -64,8 +64,8 @@ class UserSettingsUpdate(BaseModel):
 
 class UserSettingsResponse(BaseModel):
     user_id: str
-    sources: List[str]
-    schedule_cron: Optional[str]
-    context: Optional[str]
-    threshold: Optional[float]
-    active_model_slug: Optional[str]
+    sources: Optional[List[str]] = None
+    schedule_cron: Optional[str] = None
+    context: Optional[str] = None
+    threshold: Optional[float] = None
+    active_model_slug: Optional[str] = None

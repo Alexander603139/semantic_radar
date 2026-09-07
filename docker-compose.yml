@@ -16,6 +16,8 @@ services:
       MODEL_NAME: /app/models/all-MiniLM-L6-v2
       VECTORS_ROOT: /app/data/vectors
       PORT: 8002
+      YA_AI_PROXY_KEY: ${YA_AI_PROXY_KEY}
+      YA_BASE_URL: ${YA_BASE_URL}
     networks:
       - semantic-net
 
