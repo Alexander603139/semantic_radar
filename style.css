@@ -178,3 +178,16 @@ textarea {
     .grid { grid-template-columns: 1fr; }
     .grid-2col { grid-template-columns: 1fr; }
 }
+
+.form-label {
+    display: block;
+    font-size: 12px;
+    color: #8892a0;
+    margin-bottom: 4px;
+}
+details summary {
+    font-weight: 500;
+}
+details[open] summary {
+    margin-bottom: 16px;
+}

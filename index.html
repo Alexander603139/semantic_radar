@@ -81,16 +81,6 @@
     </div>
 
     <!-- УПРАВЛЕНИЕ РАСПИСАНИЕМ -->
-    <!-- <div class="card mt-12">
-        <h3>⏰ Управление расписанием парсинга</h3>
-        <div class="flex">
-            <label style="font-size:14px; color:#8892a0;">Cron-строка:</label>
-            <input type="text" id="cronInput" class="cron-input" placeholder="0 5 * * *" value="0 5 * * *">
-            <button class="btn btn-secondary" id="loadCronBtn">📂 Загрузить</button>
-            <button class="btn btn-success" id="saveCronBtn">💾 Сохранить</button>
-        </div>
-        <div id="cronStatus" class="mt-12 text-muted">Статус: готов</div>
-    </div> -->
     <div class="card mt-12">
     <h3>⏰ Управление расписанием парсинга</h3>
         <div class="flex" style="flex-wrap: wrap; gap: 10px;">
@@ -108,6 +98,82 @@
             <button class="btn btn-success" id="saveCronBtn">💾 Сохранить</button>
         </div>
         <div id="cronStatus" class="mt-12 text-muted">Статус: готов</div>
+    </div>
+
+    <!-- УПРАВЛЕНИЕ МОДЕЛЯМИ -->
+    <div class="card mt-12">
+        <h3>🤖 Управление AI-моделями</h3>
+        
+        <!-- Выбор активной модели -->
+        <div class="mb-12" style="padding: 12px; background: #1e212a; border-radius: 8px;">
+            <div class="flex" style="flex-wrap: wrap; gap: 10px; align-items: center;">
+                <label style="font-size:14px; color:#8892a0; font-weight: 500;">Текущая активная модель:</label>
+                <select id="activeModelSelect" class="input-sm" style="width: 250px;"></select>
+                <button class="btn btn-success" id="saveActiveModelBtn">💾 Сохранить активную</button>
+                <span id="activeModelStatus" class="text-muted" style="margin-left: 12px;">Статус: готов</span>
+            </div>
+        </div>
+
+        <!-- Таблица реестра моделей -->
+        <div class="flex-between mb-12">
+            <h4 style="font-size: 14px; color: #a0b0c0;">Реестр доступных моделей</h4>
+            <button class="btn btn-secondary" id="loadModelsBtn">🔄 Обновить список</button>
+        </div>
+        <div id="modelsTableContainer">
+            <p class="text-muted">Загрузка списка моделей...</p>
+        </div>
+
+        <!-- Форма добавления новой модели -->
+        <details class="mt-12" style="margin-top: 16px;">
+            <summary style="cursor: pointer; color: #8ab4f8; font-size: 14px; margin-bottom: 10px;">➕ Добавить новую модель в реестр</summary>
+            <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px;">
+                <div>
+                    <label class="form-label">Slug (уникальный ID)</label>
+                    <input type="text" id="modelSlug" class="input-sm" placeholder="e.g. my-custom-model" style="width: 100%;">
+                </div>
+                <div>
+                    <label class="form-label">Отображаемое имя</label>
+                    <input type="text" id="modelName" class="input-sm" placeholder="My Custom Model" style="width: 100%;">
+                </div>
+                <div>
+                    <label class="form-label">Тип провайдера</label>
+                    <select id="modelProviderType" class="input-sm" style="width: 100%;">
+                        <option value="local_huggingface">Локальная (HuggingFace)</option>
+                        <option value="openai_api">OpenAI API (Timeweb и др.)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">Имя модели (model_name)</label>
+                    <input type="text" id="modelModelName" class="input-sm" placeholder="intfloat/multilingual-e5-base" style="width: 100%;">
+                </div>
+                <div>
+                    <label class="form-label">Размерность вектора</label>
+                    <input type="number" id="modelDimension" class="input-sm" placeholder="768" style="width: 100%;">
+                </div>
+                <div>
+                    <label class="form-label">Base URL (для API)</label>
+                    <input type="text" id="modelBaseUrl" class="input-sm" placeholder="https://api.timeweb.ai/v1" style="width: 100%;">
+                </div>
+                <div>
+                    <label class="form-label">API Key (для API)</label>
+                    <input type="text" id="modelApiKey" class="input-sm" placeholder="***" style="width: 100%;">
+                </div>
+                <div>
+                    <label class="form-label">Путь к весам (для локальных)</label>
+                    <input type="text" id="modelModelPath" class="input-sm" placeholder="/app/models/..." style="width: 100%;">
+                </div>
+                <div style="grid-column: span 2;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="modelRequiresPrefix">
+                        <span class="form-label" style="margin: 0;">Требует префиксов (query:/passage: для E5)</span>
+                    </label>
+                </div>
+            </div>
+            <div class="flex mt-12">
+                <button class="btn btn-success" id="addModelBtn">➕ Добавить в реестр</button>
+                <span id="addModelStatus" class="text-muted">Статус: готов</span>
+            </div>
+        </details>
     </div>
 
     <!-- ПОСЛЕДНИЕ СТАТЬИ -->

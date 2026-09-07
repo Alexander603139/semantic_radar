@@ -9,6 +9,7 @@ const SERVICES = {
 
 const BASE_URL = 'https://lithef.twc1.net';
 let lastAnalysisResult = null;
+let availableModels = []; // Глобальный кэш списка моделей
 
 // ---------- DOM-элементы ----------
 const statusContainer = document.getElementById('statusContainer');
@@ -37,6 +38,14 @@ const cronInput = document.getElementById('cronInput');
 const loadCronBtn = document.getElementById('loadCronBtn');
 const saveCronBtn = document.getElementById('saveCronBtn');
 const cronStatus = document.getElementById('cronStatus');
+// Элементы для Моделей
+const activeModelSelect = document.getElementById('activeModelSelect');
+const saveActiveModelBtn = document.getElementById('saveActiveModelBtn');
+const activeModelStatus = document.getElementById('activeModelStatus');
+const loadModelsBtn = document.getElementById('loadModelsBtn');
+const modelsTableContainer = document.getElementById('modelsTableContainer');
+const addModelBtn = document.getElementById('addModelBtn');
+const addModelStatus = document.getElementById('addModelStatus');
 
 // ---------- УТИЛИТЫ ----------
 function log(msg, type = 'info') {
@@ -289,6 +298,10 @@ async function loadSources() {
             timezoneSelect.value = data.timezone;
         } else {
             timezoneSelect.value = 'UTC';
+        }
+        // Устанавливаем активную модель в селект
+        if (data.active_model_slug && activeModelSelect) {
+            setTimeout(() => { activeModelSelect.value = data.active_model_slug; }, 100);
         }
     } catch (e) {
         sourcesStatus.textContent = `❌ Ошибка: ${e.message}`;
@@ -595,6 +608,163 @@ async function deleteLastArticle() {
     }
 }
 
+// ---------- УПРАВЛЕНИЕ МОДЕЛЯМИ ----------
+async function loadModels() {
+    modelsTableContainer.innerHTML = '<p class="text-muted">⏳ Загрузка...</p>';
+    try {
+        const resp = await fetch(`${BASE_URL}/storage/ai-models`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const models = await resp.json();
+        availableModels = models;
+        
+        if (!models || models.length === 0) {
+            modelsTableContainer.innerHTML = '<p class="text-muted">В реестре нет моделей.</p>';
+            activeModelSelect.innerHTML = '<option value="">Нет доступных моделей</option>';
+            return;
+        }
+        
+        // Рендерим таблицу
+        let html = `<div class="table-wrap"><table>
+            <thead><tr>
+                <th>Slug</th>
+                <th>Имя</th>
+                <th>Тип</th>
+                <th>Размерность</th>
+                <th>Статус</th>
+            </tr></thead><tbody>`;
+        for (const m of models) {
+            const typeBadge = m.provider_type === 'local_huggingface' 
+                ? '<span class="tag" style="background:#2e7d32">Local</span>' 
+                : '<span class="tag" style="background:#1565c0">API</span>';
+            const statusDot = m.is_active 
+                ? '<span class="dot green"></span> Активна' 
+                : '<span class="dot gray"></span> Отключена';
+            
+            html += `<tr>
+                <td><code>${m.slug}</code></td>
+                <td>${m.name}</td>
+                <td>${typeBadge}</td>
+                <td>${m.dimension}</td>
+                <td style="display:flex; align-items:center; gap:6px;">${statusDot}</td>
+            </tr>`;
+        }
+        html += `</tbody></table></div>`;
+        modelsTableContainer.innerHTML = html;
+        
+        // Обновляем выпадающий список активных моделей
+        activeModelSelect.innerHTML = models
+            .filter(m => m.is_active)
+            .map(m => `<option value="${m.slug}">${m.name} (${m.slug})</option>`)
+            .join('');
+            
+    } catch (e) {
+        modelsTableContainer.innerHTML = `<p class="text-muted">❌ Ошибка: ${e.message}</p>`;
+        log(`Ошибка загрузки моделей: ${e.message}`, 'error');
+    }
+}
+
+async function updateActiveModel() {
+    const newSlug = activeModelSelect.value;
+    if (!newSlug) {
+        activeModelStatus.textContent = '⚠️ Выберите модель';
+        return;
+    }
+    
+    // ПРОВЕРКА НА СТАРЫЕ ВЕКТОРЫ (Архитектурное требование!)
+    activeModelStatus.textContent = '⏳ Проверка старых векторов...';
+    try {
+        const listResp = await fetch(`${BASE_URL}/storage/list?user_id=admin&file_type=vectors&limit=1`);
+        if (!listResp.ok) throw new Error(`HTTP ${listResp.status}`);
+        const vectors = await listResp.json();
+        
+        if (vectors && vectors.length > 0) {
+            activeModelStatus.textContent = '❌ Есть старые векторы!';
+            alert('⚠️ ВНИМАНИЕ!\n\nУ вас есть старые векторы в базе. Они не совместимы с новой моделью.\n\nПожалуйста, сначала нажмите кнопку "🗑️ Удалить все векторы" ниже, и только потом меняйте активную модель.');
+            return;
+        }
+    } catch (e) {
+        activeModelStatus.textContent = `❌ Ошибка проверки: ${e.message}`;
+        return;
+    }
+    
+    // Сохранение новой активной модели
+    activeModelStatus.textContent = '⏳ Сохранение...';
+    try {
+        // Загружаем текущие настройки, чтобы не затереть sources и cron
+        const settingsResp = await fetch(`${BASE_URL}/storage/settings/admin`);
+        const currentSettings = await settingsResp.json();
+        
+        const resp = await fetch(`${BASE_URL}/storage/settings/admin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ...currentSettings,
+                active_model_slug: newSlug
+            })
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        
+        activeModelStatus.textContent = `✅ Сохранено: ${newSlug}`;
+        log(`Активная модель изменена на ${newSlug}`, 'success');
+    } catch (e) {
+        activeModelStatus.textContent = `❌ Ошибка: ${e.message}`;
+        log(`Ошибка сохранения активной модели: ${e.message}`, 'error');
+    }
+}
+
+async function addModel() {
+    const slug = document.getElementById('modelSlug').value.trim();
+    const name = document.getElementById('modelName').value.trim();
+    const provider_type = document.getElementById('modelProviderType').value;
+    const model_name = document.getElementById('modelModelName').value.trim();
+    const dimension = parseInt(document.getElementById('modelDimension').value);
+    const base_url = document.getElementById('modelBaseUrl').value.trim() || null;
+    const api_key = document.getElementById('modelApiKey').value.trim() || null;
+    const model_path = document.getElementById('modelModelPath').value.trim() || null;
+    const requires_prefix = document.getElementById('modelRequiresPrefix').checked;
+    
+    if (!slug || !name || !model_name || !dimension) {
+        addModelStatus.textContent = '⚠️ Заполните обязательные поля (slug, name, model_name, dimension)';
+        return;
+    }
+    
+    addModelStatus.textContent = '⏳ Добавление...';
+    try {
+        const resp = await fetch(`${BASE_URL}/storage/ai-models`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                slug, name, provider_type, model_name, dimension,
+                base_url, api_key, model_path, requires_prefix, is_active: true
+            })
+        });
+        if (!resp.ok) {
+            const errData = await resp.json();
+            throw new Error(errData.detail || `HTTP ${resp.status}`);
+        }
+        
+        addModelStatus.textContent = `✅ Модель ${slug} добавлена!`;
+        log(`Добавлена новая модель: ${slug}`, 'success');
+        
+        // Очищаем форму
+        document.getElementById('modelSlug').value = '';
+        document.getElementById('modelName').value = '';
+        document.getElementById('modelModelName').value = '';
+        document.getElementById('modelDimension').value = '';
+        document.getElementById('modelBaseUrl').value = '';
+        document.getElementById('modelApiKey').value = '';
+        document.getElementById('modelModelPath').value = '';
+        document.getElementById('modelRequiresPrefix').checked = false;
+        
+        // Перезагружаем список
+        await loadModels();
+        
+    } catch (e) {
+        addModelStatus.textContent = `❌ Ошибка: ${e.message}`;
+        log(`Ошибка добавления модели: ${e.message}`, 'error');
+    }
+}
+
 // ---------- ПРИВЯЗКА СОБЫТИЙ ----------
 runParserBtn.addEventListener('click', runParser);
 runAnalysisBtn.addEventListener('click', runAnalysis);
@@ -623,6 +793,10 @@ document.getElementById('deleteLastReportBtn').addEventListener('click', deleteL
 document.getElementById('deleteAllArticlesBtn').addEventListener('click', deleteAllArticles);
 document.getElementById('deleteLastArticleBtn').addEventListener('click', deleteLastArticle);
 
+saveActiveModelBtn.addEventListener('click', updateActiveModel);
+loadModelsBtn.addEventListener('click', loadModels);
+addModelBtn.addEventListener('click', addModel);
+
 // ---------- ИНИЦИАЛИЗАЦИЯ ----------
 async function init() {
     log('🚀 Загрузка админ-панели...', 'info');
@@ -632,6 +806,7 @@ async function init() {
     await loadReports();
     await loadSources();
     await loadCron();
+    await loadModels();
     log('✅ Готово', 'success');
 }
 
