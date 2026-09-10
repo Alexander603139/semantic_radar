@@ -7,8 +7,12 @@ class Settings(BaseSettings):
     VECTORS_ROOT: str = "./data/vectors" # Корневая папка для сохранения векторов
     CHUNK_SIZE: int = 256 # Максимальная длина чанка в токенах (для MiniLM ~256 слов)
     CHUNK_OVERLAP: int = 32
-    PORT: int = 8002 # Порт сервиса
-    STORAGE_URL: str = os.getenv("STORAGE_URL", "http://storage:8007")  # будет переопределено в docker-compose
+    PORT: int = 8002 
+    STORAGE_URL: str = os.getenv("STORAGE_URL", "http://storage:8007")
+    
+    # Новые переменные для Яндекс API
+    YA_AI_PROXY_KEY: str = os.getenv("YA_AI_PROXY_KEY", "")
+    YA_BASE_URL: str = os.getenv("YA_BASE_URL", "")
 
     class Config:
         env_file = ".env"
