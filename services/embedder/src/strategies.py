@@ -39,21 +39,31 @@ class OpenAIAPIEmbedder(BaseEmbedder):
         if requires_prefix:
             texts = [f"passage: {t}" for t in texts]
         
+        # Фильтруем пустые строки и None
+        texts = [t for t in texts if t and isinstance(t, str) and t.strip()]
+        
+        if not texts:
+            logger.warning("Нет валидных текстов для векторизации")
+            return np.array([])
+        
         all_embeddings = []
-        batch_size = 20  # Безопасный размер батча для API, чтобы не упереться в лимиты токенов
         loop = asyncio.get_running_loop()
         
-        for i in range(0, len(texts), batch_size):
-            batch = texts[i:i+batch_size]
+        # Отправляем по ОДНОЙ строке за раз (Яндекс не поддерживает батчи)
+        for i, text in enumerate(texts):
             try:
+                logger.debug(f"Векторизация текста {i+1}/{len(texts)} через API")
                 response = await loop.run_in_executor(
                     None, 
-                    lambda: self.client.embeddings.create(input=batch, model=self.model_name)
+                    lambda t=text: self.client.embeddings.create(input=t, model=self.model_name)
                 )
-                batch_embeddings = [item.embedding for item in response.data]
-                all_embeddings.extend(batch_embeddings)
+                # Берём первый (и единственный) эмбеддинг из ответа
+                embedding = response.data[0].embedding
+                all_embeddings.append(embedding)
             except Exception as e:
-                logger.error(f"Ошибка API при обработке батча {i//batch_size}: {e}")
+                logger.error(f"Ошибка API при обработке текста {i+1}: {e}")
+                logger.error(f"Текст (первые 100 символов): {text[:100]}...")
                 raise
                 
+        logger.info(f"✅ Успешно векторизовано {len(all_embeddings)} текстов через API")
         return np.array(all_embeddings)
