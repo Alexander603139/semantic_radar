@@ -303,6 +303,18 @@ async function loadSources() {
         if (data.active_model_slug && activeModelSelect) {
             setTimeout(() => { activeModelSelect.value = data.active_model_slug; }, 100);
         }
+        // Отображаем индикатор fallback
+        const fallbackIndicator = document.getElementById('fallbackIndicator');
+        if (fallbackIndicator) {
+            if (data.last_fallback_event) {
+                const event = data.last_fallback_event;
+                const time = new Date(event.timestamp).toLocaleString();
+                fallbackIndicator.innerHTML = `⚠️ Последний fallback: <b>${event.from_model}</b> → <b>${event.to_model}</b> (${time}). Причина: ${event.reason.substring(0, 120)}...`;
+                fallbackIndicator.style.display = 'block';
+            } else {
+                fallbackIndicator.style.display = 'none';
+            }
+        }
     } catch (e) {
         sourcesStatus.textContent = `❌ Ошибка: ${e.message}`;
         log(`Ошибка загрузки списка: ${e.message}`, 'error');

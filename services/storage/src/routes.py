@@ -130,7 +130,7 @@ async def update_user_settings(user_id: str, data: schemas.UserSettingsUpdate, d
     if data.context is not None: settings.context = data.context
     if data.threshold is not None: settings.threshold = data.threshold
     if data.active_model_slug is not None: settings.active_model_slug = data.active_model_slug
-    
+    if data.last_fallback_event is not None: settings.last_fallback_event = data.last_fallback_event
     db.commit()
     db.refresh(settings)
     return schemas.UserSettingsResponse.model_validate(settings)

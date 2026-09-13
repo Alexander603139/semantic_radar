@@ -61,6 +61,7 @@ class UserSettingsUpdate(BaseModel):
     context: Optional[str] = None
     threshold: Optional[float] = None
     active_model_slug: Optional[str] = None
+    last_fallback_event: Optional[Dict[str, Any]] = None
 
 class UserSettingsResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)  # <-- КРИТИЧЕСКИ ВАЖНО!
@@ -70,3 +71,4 @@ class UserSettingsResponse(BaseModel):
     context: Optional[str] = None
     threshold: Optional[float] = None
     active_model_slug: Optional[str] = None
+    last_fallback_event: Optional[Dict[str, Any]] = None

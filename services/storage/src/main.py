@@ -21,8 +21,12 @@ def run_migrations():
                 conn.execute(text("ALTER TABLE user_settings ADD COLUMN context TEXT"))
             if 'threshold' not in columns:
                 conn.execute(text("ALTER TABLE user_settings ADD COLUMN threshold FLOAT DEFAULT 0.6"))
+            # if 'active_model_slug' not in columns:
+            #     conn.execute(text("ALTER TABLE user_settings ADD COLUMN active_model_slug VARCHAR(100) DEFAULT 'e5-base-local'"))
             if 'active_model_slug' not in columns:
                 conn.execute(text("ALTER TABLE user_settings ADD COLUMN active_model_slug VARCHAR(100) DEFAULT 'e5-base-local'"))
+            if 'last_fallback_event' not in columns:
+                conn.execute(text("ALTER TABLE user_settings ADD COLUMN last_fallback_event JSONB"))
             conn.commit()
             logger.info("✅ user_settings table migrated successfully")
 
