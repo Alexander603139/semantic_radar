@@ -8,6 +8,7 @@ from typing import List
 from .settings import settings
 from .models import Article
 from .strategies import LocalHuggingFaceEmbedder, OpenAIAPIEmbedder
+from .factory import EmbedderFactory
 import json
 import httpx
 import io
@@ -18,7 +19,10 @@ CHUNK_SIZE = settings.CHUNK_SIZE
 CHUNK_OVERLAP = settings.CHUNK_OVERLAP
 
 # Кэш для загруженных локальных моделей (экономим RAM и время загрузки)
-_loaded_local_models = {}
+# _loaded_local_models = {}
+
+# Фабрика стратегий (Этап 6) — кэширует локальные модели внутри себя
+_factory = EmbedderFactory()
 
 def chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> List[str]:
     words = text.split()
@@ -93,25 +97,28 @@ async def process_articles(articles: List[Article], user_id: str, model_slug: st
         model_config = await get_active_model_config(user_id)
     logger.info(f"🎯 Модель для векторизации: {model_config['name']} ({model_config['slug']})")
 
-    # 2. Инициализируем стратегию
-    if model_config["provider_type"] == "local_huggingface":
-        model_path = model_config["model_path"]
-        if model_path not in _loaded_local_models:
-            _loaded_local_models[model_path] = LocalHuggingFaceEmbedder(model_path)
-        strategy = _loaded_local_models[model_path]
+    # # 2. Инициализируем стратегию
+    # if model_config["provider_type"] == "local_huggingface":
+    #     model_path = model_config["model_path"]
+    #     if model_path not in _loaded_local_models:
+    #         _loaded_local_models[model_path] = LocalHuggingFaceEmbedder(model_path)
+    #     strategy = _loaded_local_models[model_path]
         
-    elif model_config["provider_type"] == "openai_api":
-        # Ключ берем из env (безопасность!), если нет - из БД
-        api_key = settings.YA_AI_PROXY_KEY or model_config.get("api_key")
-        if not api_key:
-            raise ValueError("API ключ не задан в переменных окружения (YA_AI_PROXY_KEY)")
-        strategy = OpenAIAPIEmbedder(
-            base_url=model_config["base_url"],
-            api_key=api_key,
-            model_name=model_config["model_name"]
-        )
-    else:
-        raise ValueError(f"Неизвестный provider_type: {model_config['provider_type']}")
+    # elif model_config["provider_type"] == "openai_api":
+    #     # Ключ берем из env (безопасность!), если нет - из БД
+    #     api_key = settings.YA_AI_PROXY_KEY or model_config.get("api_key")
+    #     if not api_key:
+    #         raise ValueError("API ключ не задан в переменных окружения (YA_AI_PROXY_KEY)")
+    #     strategy = OpenAIAPIEmbedder(
+    #         base_url=model_config["base_url"],
+    #         api_key=api_key,
+    #         model_name=model_config["model_name"]
+    #     )
+    # else:
+    #     raise ValueError(f"Неизвестный provider_type: {model_config['provider_type']}")
+
+    # 2. Получаем стратегию через фабрику (Этап 6)
+    strategy = _factory.get_strategy(model_config)
 
     # 3. Вычисляем эмбеддинги
     # embeddings = await strategy.embed_texts(all_chunks, requires_prefix=model_config["requires_prefix"])
