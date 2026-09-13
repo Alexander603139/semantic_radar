@@ -10,7 +10,8 @@ router = APIRouter()
 @router.post("/embed", response_model=EmbedResponse)
 async def embed(request: EmbedRequest):
     try:
-        file_id, count = await process_articles(request.articles, request.user_id)
+        # file_id, count = await process_articles(request.articles, request.user_id)
+        file_id, count = await process_articles(request.articles, request.user_id, request.model_slug)
         return EmbedResponse(status="ok", vectors_file=file_id, chunk_count=count)
     except Exception as e:
         logger.error(f"Ошибка векторизации: {e}")

@@ -49,7 +49,21 @@ async def get_active_model_config(user_id: str) -> dict:
                 
         raise ValueError(f"Модель с slug '{active_slug}' не найдена в реестре storage")
 
-async def process_articles(articles: List[Article], user_id: str) -> tuple[str, int]:
+async def get_model_config_by_slug(model_slug: str) -> dict:
+    """
+    Получает конфигурацию модели из реестра по slug.
+    Используется для ручного вызова /embed с конкретной моделью (Этап 4).
+    """
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        models_resp = await client.get(f"{settings.STORAGE_URL}/ai-models")
+        models_resp.raise_for_status()
+        models = models_resp.json()
+        for m in models:
+            if m["slug"] == model_slug:
+                return m
+        raise ValueError(f"Модель с slug '{model_slug}' не найдена в реестре storage")
+
+async def process_articles(articles: List[Article], user_id: str, model_slug: str = None) -> tuple[str, int]:
     all_chunks = []
     all_meta = []
 
@@ -68,9 +82,16 @@ async def process_articles(articles: List[Article], user_id: str) -> tuple[str, 
     if not all_chunks:
         raise ValueError("Нет текста для векторизации")
 
-    # 1. Узнаем, какую модель использовать
-    model_config = await get_active_model_config(user_id)
-    logger.info(f"🎯 Активная модель для векторизации: {model_config['name']} ({model_config['slug']})")
+    # # 1. Узнаем, какую модель использовать
+    # model_config = await get_active_model_config(user_id)
+    # logger.info(f"🎯 Активная модель для векторизации: {model_config['name']} ({model_config['slug']})")
+    if model_slug:
+        # Ручной вызов с конкретной моделью (проверка Этапа 4)
+        model_config = await get_model_config_by_slug(model_slug)
+    else:
+        # Обычный режим: используем активную модель пользователя из настроек
+        model_config = await get_active_model_config(user_id)
+    logger.info(f"🎯 Модель для векторизации: {model_config['name']} ({model_config['slug']})")
 
     # 2. Инициализируем стратегию
     if model_config["provider_type"] == "local_huggingface":
@@ -93,8 +114,15 @@ async def process_articles(articles: List[Article], user_id: str) -> tuple[str, 
         raise ValueError(f"Неизвестный provider_type: {model_config['provider_type']}")
 
     # 3. Вычисляем эмбеддинги
-    embeddings = await strategy.embed_texts(all_chunks, requires_prefix=model_config["requires_prefix"])
-
+    # embeddings = await strategy.embed_texts(all_chunks, requires_prefix=model_config["requires_prefix"])
+    # Для векторизации статей всегда используется префикс "passage" (E5).
+    # "query" понадобится позже для векторизации контекста.
+    embeddings = await strategy.embed_texts(
+        all_chunks,
+        requires_prefix=model_config["requires_prefix"],
+        prefix_type="passage",
+    )
+    
     # 4. Формируем DataFrame и Parquet
     df_data = {
         "article_id": [m["article_id"] for m in all_meta],
