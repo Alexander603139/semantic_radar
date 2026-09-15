@@ -738,7 +738,7 @@ async function checkVectorsAndToggleSaveButton() {
         if (hasVectors) {
             saveActiveModelBtn.disabled = true;
             if (vectorsWarningBanner) {
-                vectorsWarningBanner.innerHTML = `⚠️ Обнаружено векторов: <b>${data.count}</b>. Сначала удалите старые векторы ниже, прежде чем менять активную модель.`;
+                vectorsWarningBanner.innerHTML = `<span style="font-size: 12px;">⚠️ Обнаружено векторов: <b>${data.count}</b>. Сначала удалите старые векторы ниже, прежде чем менять активную модель.</span>`;
                 vectorsWarningBanner.style.display = 'block';
             }
         } else {
