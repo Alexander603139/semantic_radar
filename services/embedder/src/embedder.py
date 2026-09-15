@@ -221,6 +221,7 @@ async def process_articles(articles: List[Article], user_id: str, model_slug: st
             'user_id': user_id,
             'file_type': 'vectors',
             'file_key': filename,
+            'model_slug': used_model_slug,  # ← НОВОЕ: для изоляции в S3 (Этап 8)
             'metadata': json.dumps({
                 "chunk_count": len(all_chunks),
                 "source_count": len(articles),

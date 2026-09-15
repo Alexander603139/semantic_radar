@@ -29,23 +29,34 @@ async def upload_file(
     file_key: str = Form(...),
     file: UploadFile = File(...),
     metadata: str = Form(None),
+    model_slug: str = Form(None),  # ← НОВОЕ: для изоляции векторов в S3 (Этап 8)
     db: Session = Depends(get_db),
 ):
     file_data = await file.read()
     checksum = hashlib.md5(file_data).hexdigest()
-    s3_key = f"{user_id}/{file_type.value}/{file_key}"
-    
+
+    # Формируем путь в S3 с учётом model_slug (только для векторов)
+    if model_slug and file_type == schemas.FileType.VECTORS:
+        s3_key = f"{user_id}/{file_type.value}/{model_slug}/{file_key}"
+    else:
+        s3_key = f"{user_id}/{file_type.value}/{file_key}"
+
     try:
         s3_client.upload_file(file_data, s3_key)
     except Exception as e:
         logger.error(f"Failed to upload to S3: {e}")
         raise HTTPException(status_code=500, detail="S3 upload failed")
-    
+
+    # Парсим metadata и гарантируем наличие model_slug
+    extra_metadata = metadata and json.loads(metadata) or {}
+    if model_slug and "model_slug" not in extra_metadata:
+        extra_metadata["model_slug"] = model_slug
+
     file_create = schemas.FileCreate(
         user_id=user_id,
         file_type=file_type,
         file_key=file_key,
-        extra_metadata=metadata and json.loads(metadata) or None,
+        extra_metadata=extra_metadata if extra_metadata else None,
     )
     db_file = crud.create_file_record(db, file_create, s3_key, checksum)
     return schemas.FileResponse.model_validate(db_file)
