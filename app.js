@@ -46,6 +46,7 @@ const loadModelsBtn = document.getElementById('loadModelsBtn');
 const modelsTableContainer = document.getElementById('modelsTableContainer');
 const addModelBtn = document.getElementById('addModelBtn');
 const addModelStatus = document.getElementById('addModelStatus');
+const vectorsWarningBanner = document.getElementById('vectorsWarningBanner');
 
 // ---------- УТИЛИТЫ ----------
 function log(msg, type = 'info') {
@@ -124,6 +125,7 @@ async function checkTaskStatus(taskId) {
             log(`✅ Задача ${taskId} завершена: ${data.result?.total_articles || 0} статей`, 'success');
             loadArticles();
             loadVectors();
+            checkVectorsAndToggleSaveButton();
         } else if (data.status === 'failed') {
             log(`❌ Задача ${taskId} упала: ${data.error}`, 'error');
         } else {
@@ -462,6 +464,7 @@ async function deleteVectors() {
         statusEl.textContent = `✅ Удалено ${data.deleted_count || 0} векторов.`;
         log(`Удалены все векторы (${data.deleted_count || 0})`, 'success');
         loadVectors();
+        await checkVectorsAndToggleSaveButton();
     } catch (e) {
         statusEl.textContent = `❌ Ошибка: ${e.message}`;
         log(`Ошибка удаления векторов: ${e.message}`, 'error');
@@ -724,6 +727,31 @@ async function updateActiveModel() {
     }
 }
 
+// ---------- БЛОКИРОВКА СМЕНЫ МОДЕЛИ ПРИ НАЛИЧИИ ВЕКТОРОВ (Этап 9) ----------
+async function checkVectorsAndToggleSaveButton() {
+    try {
+        const resp = await fetch(`${BASE_URL}/storage/vectors/count?user_id=admin`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        const hasVectors = data.count > 0;
+
+        if (hasVectors) {
+            saveActiveModelBtn.disabled = true;
+            if (vectorsWarningBanner) {
+                vectorsWarningBanner.innerHTML = `⚠️ Обнаружено векторов: <b>${data.count}</b>. Сначала удалите старые векторы ниже, прежде чем менять активную модель.`;
+                vectorsWarningBanner.style.display = 'block';
+            }
+        } else {
+            saveActiveModelBtn.disabled = false;
+            if (vectorsWarningBanner) {
+                vectorsWarningBanner.style.display = 'none';
+            }
+        }
+    } catch (e) {
+        log(`Ошибка проверки количества векторов: ${e.message}`, 'error');
+    }
+}
+
 async function addModel() {
     const slug = document.getElementById('modelSlug').value.trim();
     const name = document.getElementById('modelName').value.trim();
@@ -819,6 +847,7 @@ async function init() {
     await loadSources();
     await loadCron();
     await loadModels();
+    await checkVectorsAndToggleSaveButton();
     log('✅ Готово', 'success');
 }
 

@@ -156,3 +156,13 @@ async def create_ai_model(model: schemas.AIModelCreate, db: Session = Depends(ge
     if crud.get_ai_model_by_slug(db, model.slug):
         raise HTTPException(status_code=400, detail="Model with this slug already exists")
     return crud.create_ai_model(db, model)
+
+@router.get("/vectors/count")
+async def count_vectors(
+    user_id: str,
+    model_slug: str = None,
+    db: Session = Depends(get_db),
+):
+    """Возвращает количество векторов пользователя (опционально — по модели)."""
+    count = crud.count_vectors(db, user_id, model_slug)
+    return {"user_id": user_id, "model_slug": model_slug, "count": count}

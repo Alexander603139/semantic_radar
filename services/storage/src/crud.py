@@ -63,4 +63,19 @@ def create_ai_model(db: Session, model_data) -> AIModel:
     db.add(db_model)
     db.commit()
     db.refresh(db_model)
-    return db_model
+    return db_model\
+
+def count_vectors(db: Session, user_id: str, model_slug: str = None) -> int:
+    """Подсчитывает количество неудалённых векторов пользователя (опционально — по модели)."""
+    query = db.query(models.FileRecord).filter(
+        models.FileRecord.user_id == user_id,
+        models.FileRecord.file_type == "vectors",
+        models.FileRecord.deleted_at.is_(None),
+    )
+    files = query.all()
+    if model_slug:
+        files = [
+            f for f in files
+            if f.extra_metadata and f.extra_metadata.get("model_slug") == model_slug
+        ]
+    return len(files)
