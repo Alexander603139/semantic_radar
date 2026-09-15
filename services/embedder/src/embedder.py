@@ -32,6 +32,7 @@ def chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVE
         chunk = " ".join(words[i:i+chunk_size])
         if chunk:
             chunks.append(chunk)
+            
     return chunks
 
 
