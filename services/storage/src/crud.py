@@ -23,11 +23,24 @@ def create_file_record(db: Session, file_data: schemas.FileCreate, storage_path:
 def get_file_record(db: Session, file_id: str) -> models.FileRecord:
     return db.query(models.FileRecord).filter(models.FileRecord.id == file_id, models.FileRecord.deleted_at.is_(None)).first()
 
-def get_files(db: Session, user_id: str, file_type: str = None, limit: int = 100) -> list:
-    query = db.query(models.FileRecord).filter(models.FileRecord.user_id == user_id, models.FileRecord.deleted_at.is_(None))
+def get_files(db: Session, user_id: str, file_type: str = None, limit: int = 100, model_slug: str = None) -> list:
+    query = db.query(models.FileRecord).filter(
+        models.FileRecord.user_id == user_id,
+        models.FileRecord.deleted_at.is_(None)
+    )
     if file_type:
         query = query.filter(models.FileRecord.file_type == file_type)
-    return query.order_by(models.FileRecord.created_at.desc()).limit(limit).all()
+    
+    files = query.order_by(models.FileRecord.created_at.desc()).limit(limit).all()
+    
+    # Этап 10: фильтрация по model_slug в extra_metadata
+    if model_slug:
+        files = [
+            f for f in files
+            if f.extra_metadata and f.extra_metadata.get("model_slug") == model_slug
+        ]
+    
+    return files
 
 def delete_file_record(db: Session, file_id: str) -> bool:
     db_file = get_file_record(db, file_id)

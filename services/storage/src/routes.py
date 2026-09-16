@@ -80,10 +80,11 @@ async def download_file(file_id: str, db: Session = Depends(get_db)):
 async def list_files(
     user_id: str,
     file_type: schemas.FileType = None,
+    model_slug: str = None,  # ← НОВОЕ: фильтр по модели (Этап 10)
     limit: int = 100,
     db: Session = Depends(get_db),
 ):
-    files = crud.get_files(db, user_id, file_type, limit)
+    files = crud.get_files(db, user_id, file_type, limit, model_slug)
     return [schemas.FileResponse.model_validate(f) for f in files]
 
 @router.delete("/delete_all")

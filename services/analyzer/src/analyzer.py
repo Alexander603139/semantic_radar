@@ -16,23 +16,31 @@ import io
 logger = logging.getLogger(__name__)
 
 async def load_vectors_for_period(user_id: str, start_date: datetime, end_date: datetime) -> pd.DataFrame:
-    """Загружает векторы из storage через API."""
+    """Загружает векторы из storage через API, фильтруя по активной модели."""
     async with httpx.AsyncClient(timeout=30.0) as client:
-        # Получаем список файлов за период
-        resp = await client.get(
-            f"{settings.STORAGE_URL}/list",
-            params={
-                "user_id": user_id,
-                "file_type": "vectors",
-                "limit": 100
-            }
-        )
+        # 1. Узнаем активную модель пользователя
+        settings_resp = await client.get(f"{settings.STORAGE_URL}/settings/{user_id}")
+        active_model_slug = None
+        if settings_resp.status_code == 200:
+            active_model_slug = settings_resp.json().get("active_model_slug")
+            logger.info(f"🎯 Analyzer использует активную модель: {active_model_slug}")
+        
+        # 2. Получаем список файлов, фильтруя по model_slug
+        params = {
+            "user_id": user_id,
+            "file_type": "vectors",
+            "limit": 100
+        }
+        if active_model_slug:
+            params["model_slug"] = active_model_slug
+            
+        resp = await client.get(f"{settings.STORAGE_URL}/list", params=params)
         if resp.status_code != 200:
             logger.warning(f"Failed to get file list from storage: {resp.status_code}")
             return pd.DataFrame()
         files = resp.json()
         if not files:
-            logger.info(f"No vector files found for user {user_id}")
+            logger.info(f"No vector files found for user {user_id} (model: {active_model_slug})")
             return pd.DataFrame()
 
         # Загружаем каждый Parquet-файл из storage
