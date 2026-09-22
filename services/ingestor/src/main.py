@@ -31,14 +31,16 @@ app = FastAPI(lifespan=lifespan)
 async def run_parser(request: RunRequest, background_tasks: BackgroundTasks):
     """
     Запускает парсинг для переданного списка сайтов.
-    Возвращает task_id для отслеживания статуса.
+    Источники берутся: сначала из запроса, потом из storage, потом fallback на settings.SOURCES.
     """
-    # Если sources не переданы, берём из настроек
+    # Если sources не переданы, берём СВЕЖИЕ из storage (не из кэша app.state)
     if request.sources is None or not request.sources:
-        request.sources = app.state.user_settings.get("sources", settings.SOURCES)
-    # Если limit не передан, используем дефолтный
+        fresh_settings = await load_user_settings(request.user_id)
+        request.sources = fresh_settings.get("sources") or settings.SOURCES
+    
+    # Если limit не передан, используем дефолтный из settings
     if request.limit is None:
-        request.limit = 5
+        request.limit = settings.DEFAULT_PARSING_LIMIT
     # Запускаем задачу в фоне
     task_id = await run_parsing_task(
         user_id=request.user_id,

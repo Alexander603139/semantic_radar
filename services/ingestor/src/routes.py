@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import List, Optional
 import httpx
@@ -12,9 +12,10 @@ class UpdateSettingsRequest(BaseModel):
     timezone: Optional[str] = "UTC"
 
 @router.post("/admin/settings")
-async def update_settings(data: UpdateSettingsRequest):
+async def update_settings(data: UpdateSettingsRequest, req: Request):
     """
     Обновляет настройки пользователя (список сайтов, расписание и часовой пояс) через storage.
+    Также обновляет in-memory кэш в app.state для быстрых последующих чтений.
     """
     # Сохраняем в storage
     async with httpx.AsyncClient() as client:
@@ -26,13 +27,20 @@ async def update_settings(data: UpdateSettingsRequest):
                 "timezone": data.timezone
             }
         )
-        if resp.status_code != 200:
-            raise HTTPException(status_code=resp.status_code, detail="Failed to update settings")
-
+    if resp.status_code != 200:
+        raise HTTPException(status_code=resp.status_code, detail="Failed to update settings")
+    
+    # Обновляем in-memory кэш, чтобы /run использовал свежие данные
+    if hasattr(req.app.state, "user_settings"):
+        req.app.state.user_settings.update({
+            "sources": data.sources,
+            "schedule_cron": data.schedule_cron,
+            "timezone": data.timezone,
+        })
+    
     # Перезапускаем планировщик с новыми параметрами
     from .scheduler import restart_scheduler
     restart_scheduler(cron=data.schedule_cron, sources=data.sources, timezone=data.timezone)
-
     return {"status": "ok", "message": "Settings updated successfully"}
 
 @router.get("/admin/settings")

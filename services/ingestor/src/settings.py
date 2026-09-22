@@ -4,25 +4,8 @@ import os
 
 class Settings(BaseSettings):
     # Основные настройки
-    SOURCES: List[str] = [
-        "https://nn.rbc.ru/",
-        "https://www.mk.ru/",
-        "https://news.mail.ru/",
-        "https://www.gazeta.ru/", 
-        "https://tass.ru/",
-        "https://lenta.ru/",
-        "https://ria.ru/",
-        "https://www.vesti.ru/",
-        "https://iz.ru/",
-        "https://www.interfax.ru/",
-        "https://ura.news/",
-        "https://www.vedomosti.ru/",
-        "https://www.forbes.ru/",
-        "https://asafov.ru/",
-        "https://colonelcassad.livejournal.com/",
-        "https://www.mn.ru/",
-        "https://www.nnov.kp.ru/",
-    ]
+    SOURCES: List[str] = []  # источники берутся из storage, этот список — только fallback
+    DEFAULT_PARSING_LIMIT: int = 5  # лимит статей на источник для запуска по расписанию
 
     OUTPUT_DIR: str = "data/articles"
     SKIP_EXTENSIONS: Tuple[str, ...] = (

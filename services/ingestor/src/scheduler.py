@@ -21,25 +21,15 @@ _current_sources = settings.SOURCES
 async def scheduled_job():
     """Функция, запускаемая по расписанию для пользователя admin"""
     logger.info("Запуск плановой задачи для пользователя admin")
-    await run_parsing_task("admin", _current_sources, 5)
+    await run_parsing_task("admin", _current_sources, settings.DEFAULT_PARSING_LIMIT)
 
-# def init_scheduler(cron: str = None, sources: list = None):
-#     """Инициализирует планировщик с переданным расписанием и списком сайтов."""
-#     global _current_sources
-#     if cron is None:
-#         cron = settings.SCHEDULE_CRON
-#     if sources is not None:
-#         _current_sources = sources  # сохраняем переданный список
-    
-#     trigger = CronTrigger.from_crontab(cron)
-#     scheduler.add_job(scheduled_job, trigger=trigger, id="weekly_parsing")
-#     scheduler.start()
-#     logger.info(f"Планировщик запущен с расписанием: {cron}, сайтов: {len(_current_sources)}")
 
 def init_scheduler(cron: str = None, sources: list = None, timezone: str = None):
     global scheduler, _current_sources, _current_cron, _current_timezone
     if scheduler:
         scheduler.shutdown()
+        scheduler = None  # ← ВАЖНО: обнуляем, чтобы не было двойного shutdown
+    
     _current_sources = sources or settings.SOURCES
     _current_cron = cron or settings.SCHEDULE_CRON
     _current_timezone = timezone or settings.DEFAULT_TIMEZONE
@@ -48,12 +38,13 @@ def init_scheduler(cron: str = None, sources: list = None, timezone: str = None)
     scheduler = AsyncIOScheduler()
     scheduler.add_job(scheduled_job, trigger=trigger, id="weekly_parsing")
     scheduler.start()
-    logger.info(f"Планировщик запущен: cron={_current_cron}, timezone={_current_timezone}")
+    logger.info(f"Планировщик запущен: cron={_current_cron}, timezone={_current_timezone}, источников={len(_current_sources)}")
 
-# Функция для перезапуска с новыми параметрами
+
 def restart_scheduler(cron: str = None, sources: list = None, timezone: str = None):
     """Останавливает текущий планировщик и запускает новый с переданными параметрами."""
     global scheduler
     if scheduler:
         scheduler.shutdown()
+        scheduler = None  # ← ВАЖНО: обнуляем перед вызовом init_scheduler
     init_scheduler(cron, sources, timezone)
