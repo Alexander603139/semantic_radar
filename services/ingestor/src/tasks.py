@@ -19,7 +19,7 @@ tasks_store = {}
 
 OUTPUT_DIR = settings.OUTPUT_DIR
 
-async def run_parsing_task(user_id: str, sources: List[str], limit: int) -> str:
+async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_analyze: bool = False) -> str:
     task_id = str(uuid.uuid4())
     tasks_store[task_id] = {"status": "running", "result": None, "error": None}
     try:
@@ -29,33 +29,19 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int) -> str:
             articles = await fetch_articles_from_source(site, limit=limit)
             if articles:
                 all_articles.extend(articles)
-
-                # # Сохраняем JSON для источника (как раньше)
-                # source_name = site.split('/')[2]
-                # date_str = datetime.now().strftime('%Y-%m-%d')
-                # os.makedirs(OUTPUT_DIR, exist_ok=True)
-                # filename = f"{source_name}_{date_str}.json"
-                # filepath = os.path.join(OUTPUT_DIR, filename)
-                # data = [art.model_dump(mode='json', exclude_none=True) for art in articles]
-                # with open(filepath, 'w', encoding='utf-8') as f:
-                #     json.dump(data, f, ensure_ascii=False, indent=2, default=str)
-                # logger.info(f"Сохранено {len(articles)} статей в {filepath}")
-
-
-                # Сохраняем статьи в storage
                 source_name = site.split('/')[2]
                 await save_articles_to_storage(user_id, articles, source_name)
             else:
                 logger.warning(f"Не найдено статей для {site}")
-
-        # Вызов embedder
+        
+        # Вызов embedder (всегда, если есть статьи)
         if all_articles:
             success = await call_embedder(user_id, all_articles)
             if not success:
                 logger.warning(f"Embedder не смог обработать статьи для {user_id}, но парсинг выполнен.")
-
-                # --- АВТОМАТИЧЕСКИЙ АНАЛИЗ И ОТЧЁТ ---
-        if all_articles:
+        
+        # --- АВТОМАТИЧЕСКИЙ АНАЛИЗ И ОТЧЁТ (только для запуска по расписанию) ---
+        if all_articles and auto_analyze:
             logger.info(f"Запуск автоматического анализа и генерации отчёта для {user_id}")
             try:
                 async with httpx.AsyncClient(timeout=60.0) as client:
@@ -67,7 +53,7 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int) -> str:
                     analyze_resp.raise_for_status()
                     analysis_data = analyze_resp.json()
                     logger.info(f"Анализ выполнен успешно для {user_id}")
-
+                    
                     # 2. Отчёт
                     report_resp = await client.post(
                         "http://reporter:8005/generate",
@@ -76,11 +62,9 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int) -> str:
                     report_resp.raise_for_status()
                     report_data = report_resp.json()
                     logger.info(f"Отчёт сгенерирован: {report_data.get('report_url')}")
-
             except Exception as e:
                 logger.error(f"Ошибка при автоматическом анализе/отчёте для {user_id}: {e}")
-                # Не прерываем выполнение задачи
-
+        
         tasks_store[task_id]["status"] = "completed"
         tasks_store[task_id]["result"] = {
             "total_articles": len(all_articles),

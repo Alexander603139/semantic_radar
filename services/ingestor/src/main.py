@@ -41,11 +41,13 @@ async def run_parser(request: RunRequest, background_tasks: BackgroundTasks):
     # Если limit не передан, используем дефолтный из settings
     if request.limit is None:
         request.limit = settings.DEFAULT_PARSING_LIMIT
-    # Запускаем задачу в фоне
+    
+    # Запускаем задачу в фоне (автоанализ ОТКЛЮЧЁН для ручного запуска)
     task_id = await run_parsing_task(
         user_id=request.user_id,
         sources=request.sources,
-        limit=request.limit
+        limit=request.limit,
+        auto_analyze=False  # ← РУЧНОЙ ЗАПУСК: только статьи и векторы
     )
     return RunResponse(task_id=task_id, status="started", message="Задача поставлена в очередь")
 

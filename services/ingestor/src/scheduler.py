@@ -21,7 +21,12 @@ _current_sources = settings.SOURCES
 async def scheduled_job():
     """Функция, запускаемая по расписанию для пользователя admin"""
     logger.info("Запуск плановой задачи для пользователя admin")
-    await run_parsing_task("admin", _current_sources, settings.DEFAULT_PARSING_LIMIT)
+    await run_parsing_task(
+        "admin",
+        _current_sources,
+        settings.DEFAULT_PARSING_LIMIT,
+        auto_analyze=True  # ← АВТОМАТИЧЕСКИЙ ЗАПУСК: полный цикл
+    )
 
 
 def init_scheduler(cron: str = None, sources: list = None, timezone: str = None):
