@@ -24,3 +24,14 @@ class EmbedResponse(BaseModel):
     status: str
     vectors_file: str
     chunk_count: int
+
+class EmbedTextsRequest(BaseModel):
+    """Запрос на векторизацию списка текстов без сохранения."""
+    texts: List[str]
+    prefix_type: str  # "query" или "passage"
+    model_slug: Optional[str] = None
+    user_id: Optional[str] = "admin"  # используется, если model_slug не передан
+
+class EmbedTextsResponse(BaseModel):
+    """Ответ с массивом эмбеддингов."""
+    embeddings: List[List[float]]

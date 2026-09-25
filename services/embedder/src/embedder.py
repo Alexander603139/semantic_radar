@@ -239,3 +239,35 @@ async def process_articles(articles: List[Article], user_id: str, model_slug: st
         file_id = result.get('id')
         logger.info(f"✅ Векторы сохранены: file_id={file_id}, модель={used_model_slug}, чанков={len(all_chunks)}")
         return file_id, len(all_chunks)
+
+async def get_embeddings_for_texts(
+    texts: List[str],
+    prefix_type: str,
+    model_slug: str = None,
+    user_id: str = "admin"
+) -> List[List[float]]:
+    """
+    Векторизует список текстов и возвращает эмбеддинги без сохранения в storage.
+    Используется сервисом context_filter для семантической фильтрации.
+    """
+    if not texts:
+        return []
+    
+    # 1. Определяем конфигурацию модели
+    if model_slug:
+        model_config = await get_model_config_by_slug(model_slug)
+    else:
+        model_config = await get_active_model_config(user_id)
+        
+    # 2. Получаем стратегию из фабрики (модель закеширована)
+    strategy = _factory.get_strategy(model_config)
+    
+    # 3. Вычисляем эмбеддинги
+    embeddings = await strategy.embed_texts(
+        texts,
+        requires_prefix=model_config["requires_prefix"],
+        prefix_type=prefix_type,
+    )
+    
+    # 4. Возвращаем как списки float (для JSON-сериализации)
+    return [emb.tolist() for emb in embeddings]
