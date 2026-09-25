@@ -146,6 +146,28 @@ services:
     networks:
       - semantic-net
 
+  context_filter:
+    env_file:
+      - /etc/semantic-radar/.env
+    build:
+      context: .
+      dockerfile: services/context_filter/Dockerfile
+    container_name: context_filter
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8010:8010"
+    environment:
+      - EMBEDDER_URL=http://embedder:8002
+      - STORAGE_URL=http://storage:8007
+      - CONTEXT_FILTER_PORT=8010
+      - DEFAULT_THRESHOLD=0.6
+      - BATCH_SIZE=32
+    depends_on:
+      - embedder
+      - storage
+    networks:
+      - semantic-net
+
 networks:
   semantic-net:
     driver: bridge

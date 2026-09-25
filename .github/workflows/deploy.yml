@@ -78,6 +78,7 @@ jobs:
               ["reporter"]=8006
               ["storage"]=8007
               ["traffic_stats"]=8009
+              ["context_filter"]=8010
             )
 
             for SERVICE in "${!SERVICES[@]}"; do
