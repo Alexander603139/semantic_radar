@@ -2,15 +2,17 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 
 class Article(BaseModel):
-    """Структура одной статьи."""
-    id: str
-    title: str
-    text: str
+    """Структура статьи. Совместима со схемой из ingestor."""
+    id: Optional[str] = None              # Делаем опциональным
+    title: str                            # Обязательное
+    body: str                             # Переименовали 'text' → 'body' (как в ingestor)
     source: Optional[str] = None
-    published_at: Optional[str] = None
+    url: Optional[str] = None             # Нужно для генерации id
+    published_at: Optional[Any] = None    # Any, т.к. может быть datetime или str
+    scraped_at: Optional[Any] = None
     
     class Config:
-        extra = "ignore"  # ← КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: игнорировать лишние поля (url, scraped_at и т.д.)
+        extra = "ignore"
 
 class FilterRequest(BaseModel):
     """Запрос на фильтрацию статей."""

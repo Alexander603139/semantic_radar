@@ -56,7 +56,7 @@ async def filter_articles_by_context(
             raise HTTPException(status_code=500, detail="Context embedding failed")
 
         # 3. Векторизуем СТАТЬИ батчем (префикс passage)
-        texts_to_embed = [f"{art.title}. {art.text}" for art in articles]
+        texts_to_embed = [f"{art.title}. {art.body}" for art in articles]
         try:
             arts_resp = await client.post(
                 f"{settings.EMBEDDER_URL}/embed_texts",
@@ -88,9 +88,14 @@ async def filter_articles_by_context(
 
         for i, art in enumerate(articles):
             score = float(similarities[i])
-            scores[art.id] = round(score, 4)
-            
+            # scores[art.id] = round(score, 4)
+            article_id = art.id or art.url or str(i)
+            scores[article_id] = round(score, 4)
+            # if score >= threshold:
+            #     passed_articles.append(art)
             if score >= threshold:
+                if not art.id:
+                    art.id = art.url or f"article_{i}"
                 passed_articles.append(art)
                 passed_embeddings.append(articles_embeddings[i].tolist())
 

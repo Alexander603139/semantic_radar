@@ -19,64 +19,6 @@ tasks_store = {}
 
 OUTPUT_DIR = settings.OUTPUT_DIR
 
-# async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_analyze: bool = False) -> str:
-#     task_id = str(uuid.uuid4())
-#     tasks_store[task_id] = {"status": "running", "result": None, "error": None}
-#     try:
-#         logger.info(f"Запуск задачи {task_id} для пользователя {user_id}")
-#         all_articles = []
-#         for site in sources:
-#             articles = await fetch_articles_from_source(site, limit=limit)
-#             if articles:
-#                 all_articles.extend(articles)
-#                 source_name = site.split('/')[2]
-#                 await save_articles_to_storage(user_id, articles, source_name)
-#             else:
-#                 logger.warning(f"Не найдено статей для {site}")
-        
-#         # Вызов embedder (всегда, если есть статьи)
-#         if all_articles:
-#             success = await call_embedder(user_id, all_articles)
-#             if not success:
-#                 logger.warning(f"Embedder не смог обработать статьи для {user_id}, но парсинг выполнен.")
-        
-#         # --- АВТОМАТИЧЕСКИЙ АНАЛИЗ И ОТЧЁТ (только для запуска по расписанию) ---
-#         if all_articles and auto_analyze:
-#             logger.info(f"Запуск автоматического анализа и генерации отчёта для {user_id}")
-#             try:
-#                 async with httpx.AsyncClient(timeout=60.0) as client:
-#                     # 1. Анализ
-#                     analyze_resp = await client.post(
-#                         "http://analyzer:8004/analyze",
-#                         json={"user_id": user_id, "weeks": 2}
-#                     )
-#                     analyze_resp.raise_for_status()
-#                     analysis_data = analyze_resp.json()
-#                     logger.info(f"Анализ выполнен успешно для {user_id}")
-                    
-#                     # 2. Отчёт
-#                     report_resp = await client.post(
-#                         "http://reporter:8005/generate",
-#                         json={"user_id": user_id, "analysis_result": analysis_data}
-#                     )
-#                     report_resp.raise_for_status()
-#                     report_data = report_resp.json()
-#                     logger.info(f"Отчёт сгенерирован: {report_data.get('report_url')}")
-#             except Exception as e:
-#                 logger.error(f"Ошибка при автоматическом анализе/отчёте для {user_id}: {e}")
-        
-#         tasks_store[task_id]["status"] = "completed"
-#         tasks_store[task_id]["result"] = {
-#             "total_articles": len(all_articles),
-#             "sources_processed": len(sources)
-#         }
-#         logger.info(f"Задача {task_id} завершена")
-#     except Exception as e:
-#         logger.error(f"Ошибка в задаче {task_id}: {e}")
-#         tasks_store[task_id]["status"] = "failed"
-#         tasks_store[task_id]["error"] = str(e)
-#     return task_id
-
 async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_analyze: bool = False) -> str:
     task_id = str(uuid.uuid4())
     tasks_store[task_id] = {"status": "running", "result": None, "error": None}
@@ -132,8 +74,8 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
                                 "context": context,
                                 "threshold": threshold,
                                 # "articles": [art.model_dump(mode='json', exclude_none=True, default=str) for art in all_articles]
-                                # "articles": [art.model_dump(mode='json', exclude_none=True) for art in all_articles]
-                                "articles": [art.model_dump(mode='json', exclude_none=True, exclude={'url', 'scraped_at'}) for art in all_articles]
+                                "articles": [art.model_dump(mode='json', exclude_none=True) for art in all_articles]
+                                # "articles": [art.model_dump(mode='json', exclude_none=True, exclude={'url', 'scraped_at'}) for art in all_articles]
                             }
                         )
                         filter_resp.raise_for_status()
