@@ -132,7 +132,8 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
                                 "context": context,
                                 "threshold": threshold,
                                 # "articles": [art.model_dump(mode='json', exclude_none=True, default=str) for art in all_articles]
-                                "articles": [art.model_dump(mode='json', exclude_none=True) for art in all_articles]
+                                # "articles": [art.model_dump(mode='json', exclude_none=True) for art in all_articles]
+                                "articles": [art.model_dump(mode='json', exclude_none=True, exclude={'url', 'scraped_at'}) for art in all_articles]
                             }
                         )
                         filter_resp.raise_for_status()
