@@ -100,6 +100,43 @@
         <div id="cronStatus" class="mt-12 text-muted">Статус: готов</div>
     </div>
 
+    <!-- ========== СЕМАНТИЧЕСКИЙ ФИЛЬТР (Этап 5) ========== -->
+    <div class="card">
+        <h3>🎯 Семантический фильтр</h3>
+        <p class="text-muted mb-12">Задайте контекст (ключевые темы) и порог сходства. Нерелевантные статьи будут отсеяны до сохранения.</p>
+        
+        <div class="grid-2col">
+            <!-- Блок: Контекст -->
+            <div>
+                <label class="form-label">Контекст (описание нужных тем)</label>
+                <textarea id="contextTextarea" placeholder="Например:&#10;искусственный интеллект&#10;машинное обучение&#10;нейросети в медицине" rows="6" style="min-height: 140px;"></textarea>
+                <div class="flex mt-12">
+                    <button id="loadContextBtn" class="btn btn-secondary">📂 Загрузить</button>
+                    <button id="saveContextBtn" class="btn btn-success">💾 Сохранить</button>
+                    <button id="clearContextBtn" class="btn btn-danger">🗑️ Очистить</button>
+                </div>
+                <div id="contextStatus" class="text-muted mt-12">Статус: готов</div>
+            </div>
+            
+            <!-- Блок: Порог -->
+            <div>
+                <label class="form-label">Порог сходства (0.0 – 1.0)</label>
+                <input type="number" id="thresholdInput" class="input-sm" 
+                    min="0" max="1" step="0.05" value="0.6" 
+                    style="width: 100%; max-width: 200px;">
+                <p class="text-muted" style="margin-top: 8px; font-size: 12px;">
+                    Рекомендуется: 0.5–0.7. Выше = строже фильтр.
+                </p>
+                <div class="flex mt-12">
+                    <button id="loadThresholdBtn" class="btn btn-secondary">📂 Загрузить</button>
+                    <button id="saveThresholdBtn" class="btn btn-success">💾 Сохранить</button>
+                    <button id="resetThresholdBtn" class="btn btn-danger">↺ Сброс (0.6)</button>
+                </div>
+                <div id="thresholdStatus" class="text-muted mt-12">Статус: готов</div>
+            </div>
+        </div>
+    </div>
+
     <!-- УПРАВЛЕНИЕ МОДЕЛЯМИ -->
     <div class="card mt-12">
         <h3>🤖 Управление AI-моделями</h3>

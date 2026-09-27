@@ -38,6 +38,20 @@ const cronInput = document.getElementById('cronInput');
 const loadCronBtn = document.getElementById('loadCronBtn');
 const saveCronBtn = document.getElementById('saveCronBtn');
 const cronStatus = document.getElementById('cronStatus');
+
+// Элементы для семантического фильтра (Этап 5)
+const contextTextarea = document.getElementById('contextTextarea');
+const loadContextBtn = document.getElementById('loadContextBtn');
+const saveContextBtn = document.getElementById('saveContextBtn');
+const clearContextBtn = document.getElementById('clearContextBtn');
+const contextStatus = document.getElementById('contextStatus');
+
+const thresholdInput = document.getElementById('thresholdInput');
+const loadThresholdBtn = document.getElementById('loadThresholdBtn');
+const saveThresholdBtn = document.getElementById('saveThresholdBtn');
+const resetThresholdBtn = document.getElementById('resetThresholdBtn');
+const thresholdStatus = document.getElementById('thresholdStatus');
+
 // Элементы для Моделей
 const activeModelSelect = document.getElementById('activeModelSelect');
 const saveActiveModelBtn = document.getElementById('saveActiveModelBtn');
@@ -121,8 +135,20 @@ async function checkTaskStatus(taskId) {
         const resp = await fetch(`${BASE_URL}/ingestor/status/${taskId}`);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
+        
         if (data.status === 'completed') {
-            log(`✅ Задача ${taskId} завершена: ${data.result?.total_articles || 0} статей`, 'success');
+            const r = data.result || {};
+            const total = r.total_collected || r.total_articles || 0;
+            const passed = r.total_articles || 0;
+            const filtered = r.filtered_count || 0;
+            
+            // Красивый вывод статистики фильтрации
+            if (filtered > 0) {
+                log(`✅ Задача завершена: 📥 собрано ${total}, ✅ прошло ${passed}, ❌ отклонено ${filtered}`, 'success');
+            } else {
+                log(`✅ Задача завершена: сохранено ${passed} статей (фильтр не применялся)`, 'success');
+            }
+            
             loadArticles();
             loadVectors();
             checkVectorsAndToggleSaveButton();
@@ -805,6 +831,94 @@ async function addModel() {
     }
 }
 
+// ---------- СЕМАНТИЧЕСКИЙ ФИЛЬТР (Этап 5) ----------
+async function loadContext() {
+    contextStatus.textContent = '⏳ Загрузка...';
+    try {
+        const resp = await fetch(`${BASE_URL}/storage/settings/admin`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        contextTextarea.value = data.context || '';
+        contextStatus.textContent = data.context 
+            ? `✅ Загружено (${data.context.length} символов)` 
+            : 'ℹ️ Контекст не задан';
+        
+        // Заодно подгрузим и порог (они в одной записи)
+        if (data.threshold !== undefined && data.threshold !== null) {
+            thresholdInput.value = data.threshold;
+            thresholdStatus.textContent = `✅ Загружено: ${data.threshold}`;
+        }
+    } catch (e) {
+        contextStatus.textContent = `❌ Ошибка: ${e.message}`;
+        log(`Ошибка загрузки контекста: ${e.message}`, 'error');
+    }
+}
+
+async function saveContext() {
+    const context = contextTextarea.value.trim();
+    contextStatus.textContent = '⏳ Сохранение...';
+    try {
+        // Чтобы не затереть остальные настройки, подгружаем текущие
+        const settingsResp = await fetch(`${BASE_URL}/storage/settings/admin`);
+        const currentSettings = await settingsResp.json();
+        
+        const resp = await fetch(`${BASE_URL}/storage/settings/admin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ...currentSettings,
+                context: context  // пустая строка = фильтр будет пропущен
+            })
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        contextStatus.textContent = context 
+            ? `✅ Сохранено (${context.length} символов)` 
+            : '✅ Сохранено (фильтр отключён — контекст пустой)';
+        log(`Контекст сохранён: "${context.substring(0, 50)}..."`, 'success');
+    } catch (e) {
+        contextStatus.textContent = `❌ Ошибка: ${e.message}`;
+        log(`Ошибка сохранения контекста: ${e.message}`, 'error');
+    }
+}
+
+function clearContext() {
+    contextTextarea.value = '';
+    contextStatus.textContent = '🗑️ Очищено (не забудьте нажать «Сохранить»)';
+}
+
+async function saveThreshold() {
+    const threshold = parseFloat(thresholdInput.value);
+    if (isNaN(threshold) || threshold < 0 || threshold > 1) {
+        thresholdStatus.textContent = '⚠️ Значение должно быть от 0.0 до 1.0';
+        return;
+    }
+    thresholdStatus.textContent = '⏳ Сохранение...';
+    try {
+        const settingsResp = await fetch(`${BASE_URL}/storage/settings/admin`);
+        const currentSettings = await settingsResp.json();
+        
+        const resp = await fetch(`${BASE_URL}/storage/settings/admin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ...currentSettings,
+                threshold: threshold
+            })
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        thresholdStatus.textContent = `✅ Сохранено: ${threshold}`;
+        log(`Порог сохранён: ${threshold}`, 'success');
+    } catch (e) {
+        thresholdStatus.textContent = `❌ Ошибка: ${e.message}`;
+        log(`Ошибка сохранения порога: ${e.message}`, 'error');
+    }
+}
+
+function resetThreshold() {
+    thresholdInput.value = 0.6;
+    thresholdStatus.textContent = '↺ Сброшено до 0.6 (не забудьте «Сохранить»)';
+}
+
 // ---------- ПРИВЯЗКА СОБЫТИЙ ----------
 runParserBtn.addEventListener('click', runParser);
 runAnalysisBtn.addEventListener('click', runAnalysis);
@@ -837,6 +951,14 @@ saveActiveModelBtn.addEventListener('click', updateActiveModel);
 loadModelsBtn.addEventListener('click', loadModels);
 addModelBtn.addEventListener('click', addModel);
 
+// Семантический фильтр (Этап 5)
+loadContextBtn.addEventListener('click', loadContext);
+saveContextBtn.addEventListener('click', saveContext);
+clearContextBtn.addEventListener('click', clearContext);
+loadThresholdBtn.addEventListener('click', loadContext);  // загружает и контекст, и порог за один запрос
+saveThresholdBtn.addEventListener('click', saveThreshold);
+resetThresholdBtn.addEventListener('click', resetThreshold);
+
 // ---------- ИНИЦИАЛИЗАЦИЯ ----------
 async function init() {
     log('🚀 Загрузка админ-панели...', 'info');
@@ -848,6 +970,7 @@ async function init() {
     await loadCron();
     await loadModels();
     await checkVectorsAndToggleSaveButton();
+    await loadContext(); 
     log('✅ Готово', 'success');
 }
 
