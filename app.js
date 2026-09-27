@@ -4,7 +4,8 @@ const SERVICES = {
     analyzer:  { url: '/analyzer', health: '/health' },
     reporter:  { url: '/reporter', health: '/health' },
     storage:   { url: '/storage', health: '/health' },
-    traffic_stats: { url: '/traffic_stats', health: '/health' }
+    traffic_stats: { url: '/traffic_stats', health: '/health' },
+    context_filter: { url: '/context_filter', health: '/health' }
 };
 
 const BASE_URL = 'https://lithef.twc1.net';
