@@ -27,29 +27,40 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
         
         # ==========================================
         # ШАГ 1: Собираем ВСЕ статьи без сохранения
-        # (чтобы можно было фильтровать ДО записи в storage)
         # ==========================================
         all_articles = []
-        articles_by_source = {}  # Для последующей группировки
+        articles_by_source = {}
+        failed_sources = []   # НОВОЕ: сайты с ошибками (недоступны, 5xx, таймаут)
+        empty_sources = []    # НОВОЕ: сайты, с которых не нашлось статей
         
         for site in sources:
-            articles = await fetch_articles_from_source(site, limit=limit)
-            if articles:
-                all_articles.extend(articles)
-                source_name = site.split('/')[2]
-                articles_by_source[source_name] = articles
-                logger.info(f"📥 Собрано {len(articles)} статей с {source_name}")
-            else:
-                logger.warning(f"Не найдено статей для {site}")
+            try:
+                articles = await fetch_articles_from_source(site, limit=limit)
+                if articles:
+                    all_articles.extend(articles)
+                    source_name = site.split('/')[2] if '/' in site else site
+                    articles_by_source[source_name] = articles
+                    logger.info(f"📥 Собрано {len(articles)} статей с {source_name}")
+                else:
+                    source_name = site.split('/')[2] if '/' in site else site
+                    empty_sources.append(source_name)
+                    logger.warning(f"⚠️ Не найдено статей для {site}")
+            except Exception as e:
+                source_name = site.split('/')[2] if '/' in site else site
+                failed_sources.append(source_name)
+                logger.error(f"❌ Ошибка при парсинге {site}: {e}")
         
         total_collected = len(all_articles)
         logger.info(f"📊 Всего собрано статей: {total_collected}")
+        if failed_sources:
+            logger.warning(f"⚠️ Недоступно сайтов: {len(failed_sources)} ({', '.join(failed_sources)})")
+        if empty_sources:
+            logger.warning(f"⚠️ Пустые сайты (нет статей): {len(empty_sources)} ({', '.join(empty_sources)})")
         
         # ==========================================
         # ШАГ 2: СЕМАНТИЧЕСКАЯ ФИЛЬТРАЦИЯ (Этап 4)
         # ==========================================
         if all_articles:
-            # 2.1 Читаем актуальные настройки пользователя (контекст и порог)
             async with httpx.AsyncClient(timeout=10.0) as client:
                 try:
                     settings_resp = await client.get(f"{settings.STORAGE_URL}/settings/{user_id}")
@@ -62,7 +73,6 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
             context = (user_settings.get("context") or "").strip()
             threshold = float(user_settings.get("threshold", 0.6))
             
-            # 2.2 Если контекст задан, применяем фильтр
             if context:
                 logger.info(f"🎯 Применяем семантический фильтр: контекст='{context}', порог={threshold}")
                 try:
@@ -73,9 +83,7 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
                                 "user_id": user_id,
                                 "context": context,
                                 "threshold": threshold,
-                                # "articles": [art.model_dump(mode='json', exclude_none=True, default=str) for art in all_articles]
                                 "articles": [art.model_dump(mode='json', exclude_none=True) for art in all_articles]
-                                # "articles": [art.model_dump(mode='json', exclude_none=True, exclude={'url', 'scraped_at'}) for art in all_articles]
                             }
                         )
                         filter_resp.raise_for_status()
@@ -86,11 +94,9 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
                         f"прошло {filter_data['total_passed']}, отклонено {filter_data['total_filtered']}"
                     )
                     
-                    # 2.3 Заменяем all_articles на отфильтрованный список
                     from .models import Article
                     all_articles = [Article(**art) for art in filter_data["articles"]]
                     
-                    # 2.4 Пересчитываем группировку по источникам (для корректного сохранения)
                     articles_by_source = {}
                     for art in all_articles:
                         source_name = art.source or "unknown"
@@ -116,7 +122,7 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
             logger.info("⚠️ После фильтрации не осталось статей. Сохранение пропущено.")
         
         # ==========================================
-        # ШАГ 4: Вызов embedder (векторизация чанков)
+        # ШАГ 4: Вызов embedder
         # ==========================================
         if all_articles:
             success = await call_embedder(user_id, all_articles)
@@ -124,22 +130,19 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
                 logger.warning(f"Embedder не смог обработать статьи для {user_id}, но парсинг выполнен.")
         
         # ==========================================
-        # ШАГ 5: АВТОМАТИЧЕСКИЙ АНАЛИЗ И ОТЧЁТ (только по расписанию)
+        # ШАГ 5: АВТОМАТИЧЕСКИЙ АНАЛИЗ И ОТЧЁТ
         # ==========================================
         if all_articles and auto_analyze:
             logger.info(f"Запуск автоматического анализа и генерации отчёта для {user_id}")
             try:
                 async with httpx.AsyncClient(timeout=60.0) as client:
-                    # 1. Анализ
                     analyze_resp = await client.post(
                         "http://analyzer:8004/analyze",
                         json={"user_id": user_id, "weeks": 2}
                     )
                     analyze_resp.raise_for_status()
                     analysis_data = analyze_resp.json()
-                    logger.info(f"Анализ выполнен успешно для {user_id}")
                     
-                    # 2. Отчёт
                     report_resp = await client.post(
                         "http://reporter:8005/generate",
                         json={"user_id": user_id, "analysis_result": analysis_data}
@@ -155,7 +158,9 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
             "total_collected": total_collected,
             "total_articles": len(all_articles),
             "filtered_count": total_collected - len(all_articles),
-            "sources_processed": len(sources)
+            "sources_processed": len(sources),
+            "failed_sources": failed_sources,  # НОВОЕ
+            "empty_sources": empty_sources,    # НОВОЕ
         }
         logger.info(f"Задача {task_id} завершена: собрано {total_collected}, после фильтра {len(all_articles)}")
         

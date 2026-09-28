@@ -143,11 +143,21 @@ async function checkTaskStatus(taskId) {
             const passed = r.total_articles || 0;
             const filtered = r.filtered_count || 0;
             
-            // Красивый вывод статистики фильтрации
+            // Основная статистика
             if (filtered > 0) {
                 log(`✅ Задача завершена: 📥 собрано ${total}, ✅ прошло ${passed}, ❌ отклонено ${filtered}`, 'success');
             } else {
                 log(`✅ Задача завершена: сохранено ${passed} статей (фильтр не применялся)`, 'success');
+            }
+            
+            // НОВОЕ: Недоступные сайты (красный)
+            if (r.failed_sources && r.failed_sources.length > 0) {
+                log(`❌ Недоступно сайтов: ${r.failed_sources.length} (${r.failed_sources.join(', ')})`, 'error');
+            }
+            
+            // НОВОЕ: Пустые сайты (жёлтый)
+            if (r.empty_sources && r.empty_sources.length > 0) {
+                log(`⚠️ Пустые сайты (нет статей): ${r.empty_sources.length} (${r.empty_sources.join(', ')})`, 'info');
             }
             
             loadArticles();
