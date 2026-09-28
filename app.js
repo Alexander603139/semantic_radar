@@ -394,13 +394,22 @@ async function measureSources() {
         const data = await resp.json();
         if (data.results && data.results.length > 0) {
             let html = `<div class="table-wrap"><table>
-                <thead><tr><th>Домен</th><th>Ранг</th><th>Open Page Rank</th><th>Ссылающиеся домены</th></tr></thead><tbody>`;
+            <thead><tr><th>Домен</th><th>Ранг</th><th>Open Page Rank</th><th>Ссылающиеся домены</th><th>Доступность</th></tr></thead><tbody>` ;
             for (const item of data.results) {
-                html += `<tr>
-                    <td>${item.domain || '—'}</td>
+                let availDot = '<span class="dot gray"></span>';
+                let availTitle = 'Не проверено';
+                if (item.available === true) {
+                    availDot = '<span class="dot green"></span>';
+                    availTitle = `Доступен (HTTP ${item.http_status})`;
+                } else if (item.available === false) {
+                    availDot = '<span class="dot red"></span>';
+                    availTitle = item.http_status ? `Недоступен (HTTP ${item.http_status})` : 'Недоступен (ошибка соединения)';
+                }
+                html += `<tr> <td>${item.domain || '—'}</td>
                     <td>${item.rank || '—'}</td>
                     <td>${item.open_page_rank !== undefined ? item.open_page_rank.toFixed(2) : '—'}</td>
                     <td>${item.referring_domains || '—'}</td>
+                    <td title="${availTitle}">${availDot}</td>
                 </tr>`;
             }
             html += `</tbody></table></div>`;

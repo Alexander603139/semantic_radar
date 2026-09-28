@@ -6,6 +6,7 @@ from .models import AnalyzeRequest, AnalyzeResponse, OpenPageRankResponse
 from .opr_client import OPRClient
 from .storage_client import StorageClient
 from .exceptions import OPRClientError
+from .availability import check_domains_availability
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -46,6 +47,19 @@ async def analyze_domains(request: AnalyzeRequest, req: Request):
         logger.error(f"Failed to save task {task_id} to storage: {e}")
         # В MVP не прерываем ответ клиенту при ошибке сохранения
 
+    # НОВОЕ: проверка доступности доменов (изолированно — не ломает основную логику)
+    results = opr_response.results
+    try:
+        availability_map = await check_domains_availability(request.domains)
+        updated_results = []
+        for r in results:
+            avail, status_code = availability_map.get(r.domain, (None, None))
+            updated_results.append(r.model_copy(update={"available": avail, "http_status": status_code}))
+        results = updated_results
+        logger.info(f"Task {task_id}: доступность проверена для {len(updated_results)} доменов")
+    except Exception as e:
+        logger.error(f"Task {task_id}: ошибка проверки доступности (не критично, продолжаем): {e}")
+        
     return AnalyzeResponse(
         task_id=task_id,
         status="completed",
@@ -53,7 +67,7 @@ async def analyze_domains(request: AnalyzeRequest, req: Request):
         total_requested=len(request.domains),
         successful=successful,
         failed=failed,
-        results=opr_response.results
+        results=results
     )
 
 

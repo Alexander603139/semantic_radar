@@ -17,7 +17,6 @@ class AnalyzeRequest(BaseModel):
                 result.append(d)
         return result
 
-
 class DomainStats(BaseModel):
     """Схема одного домена из ответа OpenPageRank."""
     domain: str
@@ -25,11 +24,13 @@ class DomainStats(BaseModel):
     open_page_rank: float | None = None
     rank: int | None = None
     referring_domains: int | None = None
+    # НОВОЕ: доступность сайта в реальном времени
+    available: bool | None = None
+    http_status: int | None = None
 
     @property
     def is_valid(self) -> bool:
         return self.found
-
 
 class OpenPageRankResponse(BaseModel):
     """Полный ответ от API OpenPageRank."""
