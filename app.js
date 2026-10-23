@@ -68,6 +68,7 @@ const vectorsWarningBanner = document.getElementById('vectorsWarningBanner');
 
 // ---------- УТИЛИТЫ ----------
 function log(msg, type = 'info') {
+    if (!logArea) return;  // Защита от null
     const color = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
     logArea.innerHTML += `<div class="${color}">${new Date().toLocaleTimeString()} — ${msg}</div>`;
     logArea.scrollTop = logArea.scrollHeight;
@@ -347,7 +348,7 @@ async function loadSources() {
         }
         // Отображаем индикатор fallback
         const fallbackIndicator = document.getElementById('fallbackIndicator');
-        if (fallbackIndicator) {
+        if (fallbackIndicator && fallbackIndicator.innerHTML !== undefined) {
             if (data.last_fallback_event) {
                 const event = data.last_fallback_event;
                 const time = new Date(event.timestamp).toLocaleString();
@@ -786,13 +787,13 @@ async function checkVectorsAndToggleSaveButton() {
 
         if (hasVectors) {
             saveActiveModelBtn.disabled = true;
-            if (vectorsWarningBanner) {
+            if (vectorsWarningBanner && vectorsWarningBanner.innerHTML !== undefined) {
                 vectorsWarningBanner.innerHTML = `<span style="font-size: 12px;">⚠️ Обнаружено векторов: <b>${data.count}</b>. Сначала удалите старые векторы ниже, прежде чем менять активную модель.</span>`;
                 vectorsWarningBanner.style.display = 'block';
             }
         } else {
             saveActiveModelBtn.disabled = false;
-            if (vectorsWarningBanner) {
+            if (vectorsWarningBanner && vectorsWarningBanner.style) {
                 vectorsWarningBanner.style.display = 'none';
             }
         }
