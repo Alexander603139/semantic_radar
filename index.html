@@ -40,20 +40,28 @@
         <!-- БЫСТРЫЕ ДЕЙСТВИЯ -->
         <div class="card">
             <h3>⚡ Быстрые действия</h3>
-            <div class="flex" style="flex-wrap: wrap; gap: 10px;">
-                <button class="btn" id="runParserBtn">📥 Запустить парсинг</button>
-                <button class="btn" id="runAnalysisBtn">🧠 Запустить анализ</button>
-                <button class="btn" id="generateReportBtn">📄 Сгенерировать отчёт</button>
+            <div class="flex mb-12">
+                <button id="runParserBtn" class="btn btn-success">📥 Запустить парсинг</button>
+                <button id="runAnalysisBtn" class="btn">🧠 Запустить анализ</button>
+                <button id="generateReportBtn" class="btn">📄 Сгенерировать отчёт</button>
             </div>
-            <div class="flex mt-12" style="gap: 12px; align-items: center;">
-                <label style="font-size:14px; color:#8892a0;">Лимит статей:</label>
-                <input type="number" id="limitInput" class="input-sm" value="3" min="1" max="20" style="width:80px;">
-                <label style="font-size:14px; color:#8892a0;">Недель:</label>
-                <input type="number" id="weeksInput" class="input-sm" value="2" min="1" max="4" style="width:80px;">
+            
+            <div class="grid-2col" style="margin: 0; gap: 12px;">
+                <div>
+                    <label class="form-label">Лимит статей:</label>
+                    <input type="number" id="limitInput" class="input-sm" value="3" min="1" max="50" style="width: 100%;">
+                </div>
+                <div>
+                    <label class="form-label">Недель:</label>
+                    <input type="number" id="weeksInput" class="input-sm" value="2" min="1" max="12" style="width: 100%;">
+                </div>
             </div>
-            <div id="actionLog" class="mt-12">
-                <div class="log-area" id="logArea">📋 Готов к работе...</div>
+            
+            <div class="flex mt-12">
+                <button id="loadQuickActionsBtn" class="btn btn-secondary">📂 Загрузить</button>
+                <button id="saveQuickActionsBtn" class="btn btn-success">💾 Сохранить</button>
             </div>
+            <div id="quickActionsStatus" class="text-muted mt-12">📋 Готов к работе...</div>
         </div>
     </div>
 

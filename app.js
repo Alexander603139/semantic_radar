@@ -26,6 +26,9 @@ const refreshStatusBtn = document.getElementById('refreshStatusBtn');
 const limitInput = document.getElementById('limitInput');
 const weeksInput = document.getElementById('weeksInput');
 const timeBadge = document.getElementById('timeBadge');
+const loadQuickActionsBtn = document.getElementById('loadQuickActionsBtn');
+const saveQuickActionsBtn = document.getElementById('saveQuickActionsBtn');
+const quickActionsStatus = document.getElementById('quickActionsStatus');
 
 // Новые элементы
 const sourcesTextarea = document.getElementById('sourcesTextarea');
@@ -939,6 +942,57 @@ function resetThreshold() {
     thresholdStatus.textContent = '↺ Сброшено до 0.6 (не забудьте «Сохранить»)';
 }
 
+// ---------- НАСТРОЙКИ БЫСТРЫХ ДЕЙСТВИЙ ----------
+async function loadQuickActionsSettings() {
+    quickActionsStatus.textContent = '⏳ Загрузка...';
+    try {
+        const resp = await fetch(`${BASE_URL}/storage/settings/admin`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        
+        if (data.default_limit !== undefined) {
+            limitInput.value = data.default_limit;
+        }
+        if (data.default_weeks !== undefined) {
+            weeksInput.value = data.default_weeks;
+        }
+        
+        quickActionsStatus.textContent = '✅ Настройки загружены';
+    } catch (e) {
+        quickActionsStatus.textContent = `❌ Ошибка: ${e.message}`;
+        log(`Ошибка загрузки настроек быстрых действий: ${e.message}`, 'error');
+    }
+}
+
+async function saveQuickActionsSettings() {
+    const limit = parseInt(limitInput.value) || 3;
+    const weeks = parseInt(weeksInput.value) || 2;
+    
+    quickActionsStatus.textContent = '⏳ Сохранение...';
+    try {
+        // Загружаем текущие настройки, чтобы не затереть остальные поля (context, sources и т.д.)
+        const settingsResp = await fetch(`${BASE_URL}/storage/settings/admin`);
+        const currentSettings = await settingsResp.json();
+        
+        const resp = await fetch(`${BASE_URL}/storage/settings/admin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ...currentSettings,
+                default_limit: limit,
+                default_weeks: weeks
+            })
+        });
+        
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        quickActionsStatus.textContent = `✅ Сохранено: лимит=${limit}, недель=${weeks}`;
+        log(`Настройки быстрых действий сохранены (лимит=${limit}, недель=${weeks})`, 'success');
+    } catch (e) {
+        quickActionsStatus.textContent = `❌ Ошибка: ${e.message}`;
+        log(`Ошибка сохранения настроек быстрых действий: ${e.message}`, 'error');
+    }
+}
+
 // ---------- ПРИВЯЗКА СОБЫТИЙ ----------
 runParserBtn.addEventListener('click', runParser);
 runAnalysisBtn.addEventListener('click', runAnalysis);
@@ -956,7 +1010,8 @@ loadSourcesBtn.addEventListener('click', loadSources);
 saveSourcesBtn.addEventListener('click', saveSources);
 measureSourcesBtn.addEventListener('click', measureSources);
 clearSourcesBtn.addEventListener('click', clearSources);
-
+loadQuickActionsBtn.addEventListener('click', loadQuickActionsSettings);
+saveQuickActionsBtn.addEventListener('click', saveQuickActionsSettings);
 loadCronBtn.addEventListener('click', loadCron);
 saveCronBtn.addEventListener('click', saveCron);
 
@@ -990,7 +1045,8 @@ async function init() {
     await loadCron();
     await loadModels();
     await checkVectorsAndToggleSaveButton();
-    await loadContext(); 
+    await loadContext();
+    await loadQuickActionsSettings(); 
     log('✅ Готово', 'success');
 }
 
