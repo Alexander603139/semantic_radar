@@ -54,7 +54,7 @@ class AIModelResponse(BaseModel):
     requires_prefix: bool
     is_active: bool
 
-# --- Схемы для Настроек ---
+
 class UserSettingsUpdate(BaseModel):
     sources: Optional[List[str]] = None
     schedule_cron: Optional[str] = None
