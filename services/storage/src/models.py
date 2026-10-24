@@ -19,7 +19,10 @@ class UserSettings(Base):
     context = Column(Text, nullable=True)
     threshold = Column(Float, nullable=True, default=0.6)
     active_model_slug = Column(String(100), nullable=True, default="e5-base-local")
-    
+
+    default_limit = Column(Integer, nullable=True, default=3)
+    default_weeks = Column(Integer, nullable=True, default=2)
+
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
