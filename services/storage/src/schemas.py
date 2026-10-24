@@ -62,9 +62,11 @@ class UserSettingsUpdate(BaseModel):
     threshold: Optional[float] = None
     active_model_slug: Optional[str] = None
     last_fallback_event: Optional[Dict[str, Any]] = None
+    default_limit: Optional[int] = None
+    default_weeks: Optional[int] = None
 
 class UserSettingsResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)  # <-- КРИТИЧЕСКИ ВАЖНО!
+    model_config = ConfigDict(from_attributes=True)
     user_id: str
     sources: Optional[List[str]] = None
     schedule_cron: Optional[str] = None
@@ -72,3 +74,5 @@ class UserSettingsResponse(BaseModel):
     threshold: Optional[float] = None
     active_model_slug: Optional[str] = None
     last_fallback_event: Optional[Dict[str, Any]] = None
+    default_limit: Optional[int] = None
+    default_weeks: Optional[int] = None

@@ -945,18 +945,16 @@ function resetThreshold() {
 
 // ---------- НАСТРОЙКИ БЫСТРЫХ ДЕЙСТВИЙ ----------
 async function loadQuickActionsSettings() {
+    if (!quickActionsStatus) return; // Защита
     quickActionsStatus.textContent = '⏳ Загрузка...';
     try {
         const resp = await fetch(`${BASE_URL}/storage/settings/admin`);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
         
-        if (data.default_limit !== undefined) {
-            limitInput.value = data.default_limit;
-        }
-        if (data.default_weeks !== undefined) {
-            weeksInput.value = data.default_weeks;
-        }
+        // Если поля есть в ответе - берем их, иначе ставим дефолты
+        limitInput.value = data.default_limit !== undefined ? data.default_limit : 3;
+        weeksInput.value = data.default_weeks !== undefined ? data.default_weeks : 2;
         
         quickActionsStatus.textContent = '✅ Настройки загружены';
     } catch (e) {
@@ -966,23 +964,28 @@ async function loadQuickActionsSettings() {
 }
 
 async function saveQuickActionsSettings() {
+    if (!quickActionsStatus) return; // Защита
     const limit = parseInt(limitInput.value) || 3;
     const weeks = parseInt(weeksInput.value) || 2;
     
     quickActionsStatus.textContent = '⏳ Сохранение...';
     try {
-        // Загружаем текущие настройки, чтобы не затереть остальные поля (context, sources и т.д.)
+        // 1. Получаем ВСЕ текущие настройки
         const settingsResp = await fetch(`${BASE_URL}/storage/settings/admin`);
         const currentSettings = await settingsResp.json();
         
+        // 2. Обновляем только нужные поля, оставляя остальные как есть
+        const updatedSettings = {
+            ...currentSettings,
+            default_limit: limit,
+            default_weeks: weeks
+        };
+        
+        // 3. Отправляем обновленные настройки
         const resp = await fetch(`${BASE_URL}/storage/settings/admin`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                ...currentSettings,
-                default_limit: limit,
-                default_weeks: weeks
-            })
+            body: JSON.stringify(updatedSettings)
         });
         
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
