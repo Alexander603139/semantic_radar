@@ -98,6 +98,48 @@ def perform_clustering(embeddings: np.ndarray) -> Tuple[np.ndarray, Any, Any]:
     labels = clusterer.fit_predict(embedding_umap)
     return labels, reducer, clusterer
 
+def build_cluster_visualization_data(
+    df: pd.DataFrame, labels: np.ndarray, embeddings: np.ndarray
+) -> List[Dict[str, Any]]:
+    """
+    Строит 2D-проекцию UMAP для визуализации кластеров.
+    Возвращает список точек: [{x, y, label, title, source}, ...].
+    Если точек меньше 2 или UMAP упал — возвращает пустой список.
+    """
+    if embeddings.shape[0] < 2 or len(labels) == 0:
+        return []
+
+    try:
+        scaler = StandardScaler()
+        scaled = scaler.fit_transform(embeddings)
+        n_samples = scaled.shape[0]
+        n_neighbors = min(15, max(2, n_samples - 1))
+        reducer = umap.UMAP(
+            n_components=2,
+            n_neighbors=n_neighbors,
+            random_state=42,
+        )
+        coords = reducer.fit_transform(scaled)
+    except Exception as e:
+        logger.warning(f"Не удалось построить 2D-проекцию UMAP: {e}")
+        return []
+
+    has_title = "title" in df.columns
+    has_source = "source" in df.columns
+    result: List[Dict[str, Any]] = []
+    for i in range(len(labels)):
+        try:
+            result.append({
+                "x": float(coords[i][0]),
+                "y": float(coords[i][1]),
+                "label": int(labels[i]),
+                "title": (str(df["title"].iloc[i])[:120] if has_title else ""),
+                "source": (str(df["source"].iloc[i]) if has_source else ""),
+            })
+        except Exception:
+            continue
+    return result
+
 def get_terms_for_cluster(df: pd.DataFrame, labels: np.ndarray, cluster_id: int, top_n: int = 5) -> List[str]:
     """
     Для заданного кластера возвращает топ-N частотных слов (терминов) из текстов.
@@ -166,12 +208,17 @@ async def analyze_user(user_id: str, weeks: int) -> Dict[str, Any]:
             if label != -1:
                 terms = get_terms_for_cluster(df_current, labels_cur, label)
                 clusters_info[f"cluster_{label}"] = {"size": int(np.sum(labels_cur == label)), "terms": terms}
+        viz_current = build_cluster_visualization_data(df_current, labels_cur, embeddings_cur)
         return {
             "drift_score": 0.0,
             "shifted_topics": [],
             "cluster_details": {
-                "current_week": {"clusters": clusters_info, "total_samples": len(labels_cur)},
-                "previous_week": {"clusters": {}, "total_samples": 0}
+                "current_week": {
+                    "clusters": clusters_info,
+                    "total_samples": len(labels_cur),
+                    "visualization": viz_current,
+                },
+                "previous_week": {"clusters": {}, "total_samples": 0, "visualization": []}
             }
         }
 
@@ -212,11 +259,20 @@ async def analyze_user(user_id: str, weeks: int) -> Dict[str, Any]:
             if prev_terms != cur_terms:
                 shifted.append({"old_terms": prev_terms, "new_terms": cur_terms})
 
+    viz_current = build_cluster_visualization_data(df_current, labels_cur, embeddings_cur)
     return {
         "drift_score": drift,
         "shifted_topics": shifted,
         "cluster_details": {
-            "current_week": {"clusters": clusters_cur, "total_samples": len(labels_cur)},
-            "previous_week": {"clusters": clusters_prev, "total_samples": len(labels_prev)}
+            "current_week": {
+                "clusters": clusters_cur,
+                "total_samples": len(labels_cur),
+                "visualization": viz_current,
+            },
+            "previous_week": {
+                "clusters": clusters_prev,
+                "total_samples": len(labels_prev),
+                "visualization": [],
+            }
         }
     }

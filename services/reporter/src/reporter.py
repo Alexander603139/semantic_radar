@@ -111,23 +111,49 @@ def create_drift_gauge(drift_score: float) -> go.Figure:
 
 def create_cluster_visualization(cluster_details: Dict[str, Any]) -> Optional[go.Figure]:
     """
-    Создаёт 2D-проекцию кластеров (если есть данные).
-    Использует UMAP-координаты из cluster_details (если они там есть).
-    В реальности мы их не передаём – это заглушка.
+    Строит 2D scatter кластеров по UMAP-координатам из cluster_details.current_week.visualization.
+    Если данных нет — возвращает None.
     """
-    # В текущей версии analyzer не возвращает координаты точек,
-    # поэтому генерируем заглушку – сообщение о том, что данных для визуализации нет.
-    # Позже можно доработать, чтобы analyzer возвращал координаты.
+    current = cluster_details.get("current_week", {}) or {}
+    points = current.get("visualization") or []
+
+    if not points:
+        logger.info("Нет данных для визуализации кластеров")
+        return None
+
+    clusters: Dict[int, list] = {}
+    for p in points:
+        clusters.setdefault(int(p["label"]), []).append(p)
+
+    palette = px.colors.qualitative.Plotly
     fig = go.Figure()
-    fig.add_annotation(
-        text="Визуализация кластеров будет доступна после расширения данных",
-        x=0.5, y=0.5, showarrow=False, font=dict(size=16)
-    )
+
+    for label in sorted(clusters.keys()):
+        pts = clusters[label]
+        if label == -1:
+            color = "lightgray"
+            name = "Шум (без кластера)"
+        else:
+            color = palette[label % len(palette)]
+            name = f"Кластер {label}"
+
+        fig.add_trace(go.Scattergl(
+            x=[p["x"] for p in pts],
+            y=[p["y"] for p in pts],
+            mode="markers",
+            marker=dict(size=6, color=color, opacity=0.75),
+            name=name,
+            text=[f"{p.get('source','')}: {p.get('title','')}" for p in pts],
+            hovertemplate="<b>%{text}</b><br>x: %{x:.2f}, y: %{y:.2f}<extra></extra>",
+        ))
+
     fig.update_layout(
         height=400,
-        xaxis=dict(visible=False),
-        yaxis=dict(visible=False),
-        margin=dict(l=20, r=20, t=20, b=20)
+        xaxis=dict(title="UMAP-1", showticklabels=False, zeroline=False),
+        yaxis=dict(title="UMAP-2", showticklabels=False, zeroline=False),
+        margin=dict(l=20, r=20, t=20, b=40),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        hovermode="closest",
     )
     return fig
 
@@ -148,10 +174,13 @@ def create_shifted_topics_table(shifted_topics: list) -> str:
     """.format("\n".join(rows))
     return table
 
-def build_html_page(user_id: str, drift_fig: go.Figure, cluster_fig: go.Figure, table_html: str, shifted_topics: list) -> str:
+def build_html_page(user_id: str, drift_fig: go.Figure, cluster_fig: Optional[go.Figure], table_html: str, shifted_topics: list) -> str:
     """Собирает полную HTML-страницу."""
     drift_html = drift_fig.to_html(full_html=False, include_plotlyjs='cdn')
-    cluster_html = cluster_fig.to_html(full_html=False, include_plotlyjs='cdn')
+    if cluster_fig is not None:
+        cluster_html = cluster_fig.to_html(full_html=False, include_plotlyjs='cdn')
+    else:
+        cluster_html = "<p><em>Нет данных для визуализации кластеров.</em></p>"
 
     summary = ""
     if shifted_topics:
