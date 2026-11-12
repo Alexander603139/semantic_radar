@@ -155,6 +155,7 @@ async def extract_text_from_page(html: str, page=None) -> str:
 async def parse_article(url: str, client: httpx.AsyncClient) -> Optional[Article]:
     html = await fetch_html(url, client)
     if not html:
+        logger.info(f"    skip[fetch]: {url}")
         return None
 
     text = await extract_text_from_page(html, page=None)
@@ -167,7 +168,7 @@ async def parse_article(url: str, client: httpx.AsyncClient) -> Optional[Article
                 html = html_pw
 
     if len(text) < MIN_TEXT_LENGTH:
-        logger.info(f"    Текст слишком короткий ({len(text)} симв.), пропускаем {url}")
+        logger.info(f"    skip[short]: {url} ({len(text)} симв.)")
         return None
 
     meta = extract_metadata(html)
@@ -292,21 +293,61 @@ async def get_article_links(source_url: str, client: httpx.AsyncClient) -> List[
 
 # --------------------- Основная функция для источника ---------------------
 
-async def fetch_articles_from_source(source_url: str, limit: int = 5) -> List[Article]:
+async def fetch_articles_from_source(
+    source_url: str,
+    limit: int = 5,
+    stats: Optional[dict] = None,
+) -> List[Article]:
+    if stats is None:
+        stats = {}
+    # Инициализируем нулями — чтобы в отчёте всегда были все ключи
+    stats.update({
+        "links_rss": 0,
+        "links_html": 0,
+        "links_total": 0,
+        "links_used": 0,
+        "articles_parsed": 0,
+        "articles_skipped": 0,
+        "articles_error": 0,
+        "fetch_method": "none",
+        "rss_urls_tried": 0,
+    })
+
     logger.info(f"\nОбработка источника: {source_url}")
     async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
-        links = await get_article_links(source_url, client)
+        # Пробуем RSS — считаем, сколько путей проверено
+        rss_paths = ['/rss', '/feed', '/rss.xml', '/feed.xml', '/xml']
+        stats["rss_urls_tried"] = len(rss_paths)
+
+        rss_links = await get_article_links_from_rss(source_url, client)
+        stats["links_rss"] = len(rss_links)
+
+        if rss_links:
+            stats["fetch_method"] = "rss"
+            links = rss_links
+        else:
+            stats["fetch_method"] = "html"
+            links = await get_article_links_from_html(source_url, client)
+            stats["links_html"] = len(links)
+
+        stats["links_total"] = len(links)
+        links = links[:limit]
+        stats["links_used"] = len(links)
+
         if not links:
             logger.info("    Ссылок на статьи не найдено")
             return []
-        links = links[:limit]
         tasks = [parse_article(url, client) for url in links]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         articles = []
         for res in results:
             if isinstance(res, Article):
                 articles.append(res)
+                stats["articles_parsed"] += 1
             elif isinstance(res, Exception):
+                stats["articles_error"] += 1
                 logger.info(f"    Ошибка парсинга: {res}")
-        logger.info(f"    Успешно спарсено: {len(articles)} статей")
+            else:
+                # None — отсеяно по длине текста или fetch не удался
+                stats["articles_skipped"] += 1
         return articles

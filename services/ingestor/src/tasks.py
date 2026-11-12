@@ -32,10 +32,12 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
         articles_by_source = {}
         failed_sources = []   # НОВОЕ: сайты с ошибками (недоступны, 5xx, таймаут)
         empty_sources = []    # НОВОЕ: сайты, с которых не нашлось статей
+        per_source_stats = {}
         
         for site in sources:
+            stats = {}
             try:
-                articles = await fetch_articles_from_source(site, limit=limit)
+                articles = await fetch_articles_from_source(site, limit=limit, stats=stats)
                 if articles:
                     all_articles.extend(articles)
                     source_name = site.split('/')[2] if '/' in site else site
@@ -48,7 +50,9 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
             except Exception as e:
                 source_name = site.split('/')[2] if '/' in site else site
                 failed_sources.append(source_name)
+                stats["error"] = str(e)
                 logger.error(f"❌ Ошибка при парсинге {site}: {e}")
+            per_source_stats[source_name] = stats
         
         total_collected = len(all_articles)
         logger.info(f"📊 Всего собрано статей: {total_collected}")
@@ -60,6 +64,8 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
         # ==========================================
         # ШАГ 2: СЕМАНТИЧЕСКАЯ ФИЛЬТРАЦИЯ (Этап 4)
         # ==========================================
+        filter_status = "skipped_no_context"
+        filter_stats = {}
         if all_articles:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 try:
@@ -88,7 +94,15 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
                         )
                         filter_resp.raise_for_status()
                         filter_data = filter_resp.json()
-                    
+
+                    filter_status = "applied"
+                    filter_stats = {
+                        "context": context,
+                        "threshold": threshold,
+                        "total_received": filter_data.get("total_received"),
+                        "total_passed": filter_data.get("total_passed"),
+                        "total_filtered": filter_data.get("total_filtered"),
+                    }
                     logger.info(
                         f"✅ Фильтр: получено {filter_data['total_received']}, "
                         f"прошло {filter_data['total_passed']}, отклонено {filter_data['total_filtered']}"
@@ -96,8 +110,8 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
                     
                     from .models import Article
                     all_articles = [Article(**art) for art in filter_data["articles"]]
-                    
                     articles_by_source = {}
+
                     for art in all_articles:
                         source_name = art.source or "unknown"
                         if source_name not in articles_by_source:
@@ -105,6 +119,8 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
                         articles_by_source[source_name].append(art)
                     
                 except Exception as e:
+                    filter_status = "failed"
+                    filter_stats = {"error": str(e), "context": context, "threshold": threshold}
                     logger.error(f"❌ Ошибка при вызове context_filter: {e}. Продолжаем без фильтрации.")
             else:
                 logger.info("ℹ️ Контекст не задан, фильтрация пропущена.")
@@ -161,6 +177,9 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
             "sources_processed": len(sources),
             "failed_sources": failed_sources,  # НОВОЕ
             "empty_sources": empty_sources,    # НОВОЕ
+            "per_source": per_source_stats,          # НОВОЕ
+            "filter_status": filter_status,          # НОВОЕ
+            "filter_stats": filter_stats,            # НОВОЕ
         }
         logger.info(f"Задача {task_id} завершена: собрано {total_collected}, после фильтра {len(all_articles)}")
         

@@ -146,24 +146,52 @@ async function checkTaskStatus(taskId) {
             const total = r.total_collected || r.total_articles || 0;
             const passed = r.total_articles || 0;
             const filtered = r.filtered_count || 0;
-            
-            // Основная статистика
+
+            // Итоговая сводка
             if (filtered > 0) {
                 log(`✅ Задача завершена: 📥 собрано ${total}, ✅ прошло ${passed}, ❌ отклонено ${filtered}`, 'success');
             } else {
                 log(`✅ Задача завершена: сохранено ${passed} статей (фильтр не применялся)`, 'success');
             }
-            
-            // НОВОЕ: Недоступные сайты (красный)
+
+            // Статус контекстного фильтра
+            if (r.filter_status === 'applied' && r.filter_stats) {
+                const fs = r.filter_stats;
+                log(`🎯 Фильтр: получено ${fs.total_received}, прошло ${fs.total_passed}, отклонено ${fs.total_filtered} (контекст="${fs.context}", порог=${fs.threshold})`, 'info');
+            } else if (r.filter_status === 'failed') {
+                log(`⚠️ Фильтр упал: ${r.filter_stats?.error || 'неизвестная ошибка'}`, 'error');
+            } else if (r.filter_status === 'skipped_no_context') {
+                log(`ℹ️ Фильтр пропущен: контекст не задан`, 'info');
+            }
+
+            // Детализация по источникам
+            if (r.per_source && typeof r.per_source === 'object') {
+                const keys = Object.keys(r.per_source);
+                if (keys.length > 0) {
+                    log(`📊 По источникам (${keys.length}):`, 'info');
+                    for (const [src, s] of Object.entries(r.per_source)) {
+                        if (s.error) {
+                            log(`  ❌ ${src}: ${s.error}`, 'error');
+                            continue;
+                        }
+                        const type = s.fetch_method === 'rss' ? 'RSS' : 'HTML';
+                        const parsed = s.articles_parsed || 0;
+                        const line = `  ${src} [${type}]: rss=${s.links_rss || 0} html=${s.links_html || 0} → в работу=${s.links_used || 0} → статей=${parsed} (skip=${s.articles_skipped || 0}, err=${s.articles_error || 0})`;
+                        log(line, parsed > 0 ? 'success' : 'info');
+                    }
+                }
+            }
+
+            // Недоступные сайты (красный)
             if (r.failed_sources && r.failed_sources.length > 0) {
                 log(`❌ Недоступно сайтов: ${r.failed_sources.length} (${r.failed_sources.join(', ')})`, 'error');
             }
-            
-            // НОВОЕ: Пустые сайты (жёлтый)
+
+            // Пустые сайты (желтый)
             if (r.empty_sources && r.empty_sources.length > 0) {
                 log(`⚠️ Пустые сайты (нет статей): ${r.empty_sources.length} (${r.empty_sources.join(', ')})`, 'info');
             }
-            
+
             loadArticles();
             loadVectors();
             checkVectorsAndToggleSaveButton();
@@ -173,6 +201,10 @@ async function checkTaskStatus(taskId) {
             log(`⏳ Задача ${taskId} выполняется (${data.status})...`, 'info');
             setTimeout(() => checkTaskStatus(taskId), 5000);
         }
+
+
+
+
     } catch (e) {
         log(`❌ Ошибка при проверке статуса: ${e.message}`, 'error');
     }
