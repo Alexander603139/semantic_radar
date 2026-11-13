@@ -11,6 +11,8 @@ const SERVICES = {
 const BASE_URL = 'https://lithef.twc1.net';
 let lastAnalysisResult = null;
 let availableModels = []; // Глобальный кэш списка моделей
+let taskStartTime = null;
+let taskTimerInterval = null;
 
 // ---------- DOM-элементы ----------
 const statusContainer = document.getElementById('statusContainer');
@@ -116,6 +118,19 @@ refreshStatusBtn.addEventListener('click', () => {
 async function runParser() {
     const limit = parseInt(limitInput.value) || 3;
     runParserBtn.disabled = true;
+
+        // Запускаем таймер
+    taskStartTime = Date.now();
+    const progressEl = document.getElementById('taskProgress');
+    progressEl.style.display = 'block';
+    clearInterval(taskTimerInterval);
+    taskTimerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - taskStartTime) / 1000);
+        const mins = Math.floor(elapsed / 60);
+        const secs = elapsed % 60;
+        progressEl.innerText = `⏳ Задача выполняется... прошло ${mins > 0 ? mins + ' мин ' : ''}${secs} сек`;
+    }, 1000);
+
     log(`Запуск парсинга (limit=${limit})...`, 'info');
 
     try {
@@ -141,6 +156,12 @@ async function checkTaskStatus(taskId) {
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
         
+        // Останавливаем таймер при любом финальном статусе
+        if (data.status === 'completed' || data.status === 'failed') {
+            clearInterval(taskTimerInterval);
+            document.getElementById('taskProgress').style.display = 'none';
+        }
+
         if (data.status === 'completed') {
             const r = data.result || {};
             const total = r.total_collected || r.total_articles || 0;
@@ -198,15 +219,14 @@ async function checkTaskStatus(taskId) {
         } else if (data.status === 'failed') {
             log(`❌ Задача ${taskId} упала: ${data.error}`, 'error');
         } else {
-            log(`⏳ Задача ${taskId} выполняется (${data.status})...`, 'info');
+            // УБРАЛИ: log(`⏳ Задача ... выполняется...`)
+            // Таймер уже обновляет строку #taskProgress каждую секунду
             setTimeout(() => checkTaskStatus(taskId), 5000);
         }
-
-
-
-
     } catch (e) {
         log(`❌ Ошибка при проверке статуса: ${e.message}`, 'error');
+        clearInterval(taskTimerInterval);
+        document.getElementById('taskProgress').style.display = 'none';
     }
 }
 
