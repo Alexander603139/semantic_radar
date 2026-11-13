@@ -20,7 +20,8 @@ tasks_store = {}
 OUTPUT_DIR = settings.OUTPUT_DIR
 
 async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_analyze: bool = False) -> str:
-    task_id = str(uuid.uuid4())
+    if task_id is None:
+        task_id = str(uuid.uuid4())
     tasks_store[task_id] = {"status": "running", "result": None, "error": None}
     try:
         logger.info(f"Запуск задачи {task_id} для пользователя {user_id}")

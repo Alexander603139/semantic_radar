@@ -42,13 +42,21 @@ async def run_parser(request: RunRequest, background_tasks: BackgroundTasks):
     if request.limit is None:
         request.limit = settings.DEFAULT_PARSING_LIMIT
     
-    # Запускаем задачу в фоне (автоанализ ОТКЛЮЧЁН для ручного запуска)
-    task_id = await run_parsing_task(
+    # 1. Генерируем task_id СРАЗУ, чтобы отдать его фронтенду
+    import uuid
+    task_id = str(uuid.uuid4())
+
+    # 2. Отправляем функцию в фон (без await!). FastAPI запустит её после того, как вернёт ответ.
+    background_tasks.add_task(
+        run_parsing_task,
         user_id=request.user_id,
         sources=request.sources,
         limit=request.limit,
-        auto_analyze=False  # ← РУЧНОЙ ЗАПУСК: только статьи и векторы
+        auto_analyze=False,
+        task_id=task_id
     )
+    
+    # 3. Мгновенно возвращаем ответ
     return RunResponse(task_id=task_id, status="started", message="Задача поставлена в очередь")
 
 @app.get("/status/{task_id}", response_model=TaskStatusResponse)
