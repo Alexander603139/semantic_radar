@@ -7,6 +7,7 @@ from .parser import fetch_articles_from_source
 from .models import Article
 from .settings import settings
 from .embedder_client import call_embedder
+from typing import List, Tuple
 import json
 import os
 import httpx
@@ -127,7 +128,22 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
                 logger.info("ℹ️ Контекст не задан, фильтрация пропущена.")
         else:
             logger.info("⚠️ Нет статей для обработки.")
-        
+
+
+        # ==========================================
+        # ШАГ 2.5: ДЕДУПЛИКАЦИЯ (Уровень 5)
+        # ==========================================
+        if all_articles:
+            unique_articles, dropped_count = deduplicate_articles(all_articles)
+            if dropped_count > 0:
+                logger.info(f"🧹 Дедупликация: удалено {dropped_count} дубликатов, осталось {len(unique_articles)} статей.")
+                all_articles = unique_articles
+                # Пересобираем articles_by_source после дедупликации
+                articles_by_source = {}
+                for art in all_articles:
+                    source_name = art.source or "unknown"
+                    articles_by_source.setdefault(source_name, []).append(art)
+
         # ==========================================
         # ШАГ 3: Сохраняем ТОЛЬКО прошедшие фильтр статьи
         # ==========================================
@@ -189,6 +205,53 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
         tasks_store[task_id]["status"] = "failed"
         tasks_store[task_id]["error"] = str(e)
     return task_id
+
+def deduplicate_articles(articles: List[Article]) -> Tuple[List[Article], int]:
+    """
+    Удаляет дубликаты по похожести заголовка (difflib) или по началу текста (hash).
+    Возвращает (уникальные_статьи, количество_удаленных).
+    """
+    import difflib
+    import hashlib
+    import re
+    
+    unique = []
+    dropped = 0
+    
+    for art in articles:
+        is_dup = False
+        
+        # Нормализация заголовка (убираем пунктуацию и лишние пробелы)
+        title_norm = re.sub(r'[^\w\s]', '', art.title.lower()).strip()
+        
+        # Хэш первых 500 символов нормализованного текста
+        body_snippet = re.sub(r'\s+', ' ', art.body[:500].lower()).strip()
+        body_hash = hashlib.md5(body_snippet.encode('utf-8')).hexdigest()
+        
+        for u in unique:
+            u_title_norm = re.sub(r'[^\w\s]', '', u.title.lower()).strip()
+            
+            # 1. Проверка по заголовку
+            ratio = difflib.SequenceMatcher(None, title_norm, u_title_norm).ratio()
+            if ratio > 0.85:  # 85% сходства достаточно
+                is_dup = True
+                logger.info(f"    Дубликат по заголовку (ratio={ratio:.2f}): '{art.title}' ≈ '{u.title}'")
+                break
+                
+            # 2. Проверка по тексту
+            u_body_snippet = re.sub(r'\s+', ' ', u.body[:500].lower()).strip()
+            u_body_hash = hashlib.md5(u_body_snippet.encode('utf-8')).hexdigest()
+            if body_hash == u_body_hash:
+                is_dup = True
+                logger.info(f"    Дубликат по тексту: '{art.title}' == '{u.title}'")
+                break
+                
+        if is_dup:
+            dropped += 1
+        else:
+            unique.append(art)
+            
+    return unique, dropped
 
 async def save_articles_to_storage(user_id: str, articles: List[Article], source_name: str) -> bool:
     """
