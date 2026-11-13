@@ -146,7 +146,7 @@ def create_cluster_visualization(cluster_details: Dict[str, Any]) -> Optional[go
     for label in sorted(clusters.keys()):
         pts = clusters[label]
         if label == -1:
-            color = "lightgray"
+            color = "dimgray" # тёмно-серый, виден на белом
         else:
             color = palette[label % len(palette)]
 
@@ -154,7 +154,7 @@ def create_cluster_visualization(cluster_details: Dict[str, Any]) -> Optional[go
             x=[p["x"] for p in pts],
             y=[p["y"] for p in pts],
             mode="markers",
-            marker=dict(size=6, color=color, opacity=0.75),
+            marker=dict(size=7, color=color, opacity=0.75),
             name=cluster_label(label),
             text=[f"{p.get('source','')}: {p.get('title','')}" for p in pts],
             hovertemplate="<b>%{text}</b><br>x: %{x:.2f}, y: %{y:.2f}<extra></extra>",
@@ -172,6 +172,15 @@ def create_cluster_visualization(cluster_details: Dict[str, Any]) -> Optional[go
         ),
         hovermode="closest",
     )
+     # Если точки слишком плотные — расширяем диапазон осей
+    xs = [p["x"] for p in points]
+    ys = [p["y"] for p in points]
+    span_x = max(xs) - min(xs)
+    span_y = max(ys) - min(ys)
+    pad_x = max(span_x * 0.3, 0.5)
+    pad_y = max(span_y * 0.3, 0.5)
+    fig.update_xaxes(range=[min(xs) - pad_x, max(xs) + pad_x])
+    fig.update_yaxes(range=[min(ys) - pad_y, max(ys) + pad_y])
     return fig
 
 def create_shifted_topics_table(shifted_topics: list) -> str:

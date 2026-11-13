@@ -79,8 +79,9 @@ def compute_embeddings_matrix(df: pd.DataFrame) -> np.ndarray:
 
 def perform_clustering(embeddings: np.ndarray) -> Tuple[np.ndarray, Any, Any]:
     """
-    Выполняет кластеризацию: UMAP снижение размерности, затем HDBSCAN.
-    Возвращает: labels, reducer, clusterer.
+    Кластеризация: UMAP → HDBSCAN.
+    Параметры адаптируются под размер выборки.
+    Fallback на KMeans, если HDBSCAN пометил всё как шум (-1).
     """
     if embeddings.shape[0] == 0:
         return np.array([]), None, None
@@ -90,12 +91,48 @@ def perform_clustering(embeddings: np.ndarray) -> Tuple[np.ndarray, Any, Any]:
     # Стандартизация
     scaler = StandardScaler()
     embeddings_scaled = scaler.fit_transform(embeddings)
-    # UMAP
-    reducer = umap.UMAP(n_components=settings.UMAP_N_COMPONENTS, random_state=42)
+    n_samples = embeddings_scaled.shape[0]
+
+    # UMAP: n_neighbors и n_components не должны превышать выборку
+    n_neighbors = min(15, max(2, n_samples - 1))
+    n_components = min(settings.UMAP_N_COMPONENTS, max(2, n_samples - 2))
+    reducer = umap.UMAP(
+        n_components=n_components,
+        n_neighbors=n_neighbors,
+        min_dist=0.0,
+        random_state=42,
+    )
     embedding_umap = reducer.fit_transform(embeddings_scaled)
-    # HDBSCAN
-    clusterer = hdbscan.HDBSCAN(min_cluster_size=settings.HDBSCAN_MIN_CLUSTER_SIZE)
+
+    # HDBSCAN: адаптивные параметры
+    min_cluster_size = max(3, min(settings.HDBSCAN_MIN_CLUSTER_SIZE, n_samples // 4))
+    min_samples = max(1, min_cluster_size // 2)
+    logger.info(
+        f"HDBSCAN: n_samples={n_samples}, "
+        f"min_cluster_size={min_cluster_size}, min_samples={min_samples}"
+    )
+
+    clusterer = hdbscan.HDBSCAN(
+        min_cluster_size=min_cluster_size,
+        min_samples=min_samples,
+        cluster_selection_method='leaf',
+    )
     labels = clusterer.fit_predict(embedding_umap)
+
+    # Fallback: все точки — шум → KMeans
+    if np.all(labels == -1):
+        logger.warning(
+            f"HDBSCAN вернул все -1 (n_samples={n_samples}), fallback на KMeans"
+        )
+        from sklearn.cluster import KMeans
+        k = max(2, min(int(np.sqrt(n_samples)), n_samples - 1))
+        kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
+        labels = kmeans.fit_predict(embedding_umap)
+        logger.info(f"KMeans: k={k}, размеры кластеров={np.bincount(labels).tolist()}")
+        return labels, reducer, None
+
+    unique, counts = np.unique(labels, return_counts=True)
+    logger.info(f"HDBSCAN: метки={dict(zip(unique.tolist(), counts.tolist()))}")
     return labels, reducer, clusterer
 
 def build_cluster_visualization_data(

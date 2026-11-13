@@ -185,8 +185,8 @@ async def extract_text_from_page(html: str, page=None) -> str:
 
 # --------------------- НОВОЕ (уровень 2.2): проверка "это статья?" ---------------------
 
-def _is_bad_title(t: str) -> bool:
-    """Заголовок похож на дату/служебный, а не на название материала."""
+def _is_bad_title(t: str, url: str = "") -> bool:
+    """Заголовок похож на дату/имя сайта, а не на название материала."""
     if not t or len(t.strip()) < 10:
         return True
     t = t.strip()
@@ -209,6 +209,12 @@ def _is_bad_title(t: str) -> bool:
     # "2026-11-03 ..."
     if re.match(r'^\d{4}-\d{2}-\d{2}', t):
         return True
+    # Title совпадает с частью домена (например, "colonelcassad")
+    if url:
+        domain_part = urlparse(url).netloc.lower().split('.')[0]
+        if domain_part and domain_part in t.lower().replace(' ', ''):
+            return True
+    return Falseue
     return False
 
 
