@@ -19,7 +19,7 @@ tasks_store = {}
 
 OUTPUT_DIR = settings.OUTPUT_DIR
 
-async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_analyze: bool = False) -> str:
+async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_analyze: bool = False, task_id: str = None) -> str:
     if task_id is None:
         task_id = str(uuid.uuid4())
     tasks_store[task_id] = {"status": "running", "result": None, "error": None}
