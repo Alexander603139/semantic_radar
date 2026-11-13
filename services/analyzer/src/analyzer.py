@@ -66,16 +66,50 @@ async def load_vectors_for_period(user_id: str, start_date: datetime, end_date: 
             return pd.DataFrame()
         return pd.concat(all_dfs, ignore_index=True)
 
-def compute_embeddings_matrix(df: pd.DataFrame) -> np.ndarray:
-    """Извлекает векторы из колонки 'embedding' и возвращает матрицу (n_samples, dim)."""
+def compute_embeddings_matrix(df: pd.DataFrame) -> Tuple[np.ndarray, pd.DataFrame]:
+    """
+    Группирует чанки по article_id и усредняет их векторы (mean pooling).
+    Возвращает:
+      - матрицу эмбеддингов (n_articles, dim)
+      - DataFrame с метаданными статей (article_id, source, title, text)
+    """
     if df.empty:
-        return np.array([])
+        return np.array([]), pd.DataFrame()
+
+    # Фоллбэк для старых файлов, где нет article_id
+    if 'article_id' not in df.columns:
+        df = df.copy()
+        df['article_id'] = [f"legacy_{i}" for i in range(len(df))]
+
     try:
-        embeddings = np.stack(df['embedding'].values)
+        grouped = df.groupby('article_id')
+        embeddings = []
+        meta_rows = []
+
+        for article_id, group in grouped:
+            try:
+                chunk_embs = np.stack(group['embedding'].values)
+                mean_emb = np.mean(chunk_embs, axis=0)
+                embeddings.append(mean_emb)
+
+                first = group.iloc[0]
+                meta_rows.append({
+                    'article_id': article_id,
+                    'source': first.get('source', ''),
+                    'title': first.get('title', ''),
+                    'text': first.get('text', ''),
+                })
+            except Exception as e:
+                logger.warning(f"Failed to pool article {article_id}: {e}")
+                continue
+
+        if not embeddings:
+            return np.array([]), pd.DataFrame()
+
+        return np.stack(embeddings), pd.DataFrame(meta_rows)
     except Exception as e:
         logger.error(f"Failed to stack embeddings: {e}")
-        return np.array([])
-    return embeddings
+        return np.array([]), pd.DataFrame()
 
 def perform_clustering(embeddings: np.ndarray) -> Tuple[np.ndarray, Any, Any]:
     """
@@ -241,18 +275,23 @@ async def analyze_user(user_id: str, weeks: int) -> Dict[str, Any]:
     if df_current.empty:
         return {"error": f"Нет данных за текущую неделю"}
     if df_previous.empty:
-        # Анализируем только текущую неделю
-        embeddings_cur = compute_embeddings_matrix(df_current)
+        # было: embeddings_cur = compute_embeddings_matrix(df_current)
+        embeddings_cur, df_current_meta = compute_embeddings_matrix(df_current)
+        
         if embeddings_cur.size == 0:
             return {"error": "Нет эмбеддингов для анализа"}
+        
         labels_cur, _, _ = perform_clustering(embeddings_cur)
         clusters_info = {}
         unique_labels = set(labels_cur)
         for label in unique_labels:
             if label != -1:
-                terms = get_terms_for_cluster(df_current, labels_cur, label)
+                # было: terms = get_terms_for_cluster(df_current, labels_cur, label)
+                terms = get_terms_for_cluster(df_current_meta, labels_cur, label)
                 clusters_info[f"cluster_{label}"] = {"size": int(np.sum(labels_cur == label)), "terms": terms}
-        viz_current = build_cluster_visualization_data(df_current, labels_cur, embeddings_cur)
+        
+        # было: viz_current = build_cluster_visualization_data(df_current, labels_cur, embeddings_cur)
+        viz_current = build_cluster_visualization_data(df_current_meta, labels_cur, embeddings_cur)
         return {
             "drift_score": 0.0,
             "shifted_topics": [],
@@ -267,8 +306,10 @@ async def analyze_user(user_id: str, weeks: int) -> Dict[str, Any]:
         }
 
     # Обе недели есть – вычисляем кластеры и дрифт
-    embeddings_cur = compute_embeddings_matrix(df_current)
-    embeddings_prev = compute_embeddings_matrix(df_previous)
+    # было: embeddings_cur = compute_embeddings_matrix(df_current)
+    # было: embeddings_prev = compute_embeddings_matrix(df_previous)
+    embeddings_cur, df_current_meta = compute_embeddings_matrix(df_current)
+    embeddings_prev, df_previous_meta = compute_embeddings_matrix(df_previous)
 
     if embeddings_cur.size == 0 or embeddings_prev.size == 0:
         return {"error": "Нет эмбеддингов для анализа"}
@@ -276,20 +317,20 @@ async def analyze_user(user_id: str, weeks: int) -> Dict[str, Any]:
     labels_cur, _, _ = perform_clustering(embeddings_cur)
     labels_prev, _, _ = perform_clustering(embeddings_prev)
 
-    # Вычисляем дрифт
     drift = compute_drift_score(embeddings_prev, embeddings_cur)
 
-    # Собираем информацию о кластерах для текущей и предыдущей недели
     clusters_cur = {}
     for label in set(labels_cur):
         if label != -1:
-            terms = get_terms_for_cluster(df_current, labels_cur, label)
+            # было: terms = get_terms_for_cluster(df_current, labels_cur, label)
+            terms = get_terms_for_cluster(df_current_meta, labels_cur, label)
             clusters_cur[f"cluster_{label}"] = {"size": int(np.sum(labels_cur == label)), "terms": terms}
 
     clusters_prev = {}
     for label in set(labels_prev):
         if label != -1:
-            terms = get_terms_for_cluster(df_previous, labels_prev, label)
+            # было: terms = get_terms_for_cluster(df_previous, labels_prev, label)
+            terms = get_terms_for_cluster(df_previous_meta, labels_prev, label)
             clusters_prev[f"cluster_{label}"] = {"size": int(np.sum(labels_prev == label)), "terms": terms}
 
     # Поиск сместившихся тем (простое сопоставление)
@@ -303,7 +344,9 @@ async def analyze_user(user_id: str, weeks: int) -> Dict[str, Any]:
             if prev_terms != cur_terms:
                 shifted.append({"old_terms": prev_terms, "new_terms": cur_terms})
 
-    viz_current = build_cluster_visualization_data(df_current, labels_cur, embeddings_cur)
+    # было: viz_current = build_cluster_visualization_data(df_current, labels_cur, embeddings_cur)
+    viz_current = build_cluster_visualization_data(df_current_meta, labels_cur, embeddings_cur)
+
     return {
         "drift_score": drift,
         "shifted_topics": shifted,

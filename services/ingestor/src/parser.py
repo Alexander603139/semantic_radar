@@ -250,6 +250,11 @@ def is_article_page(html: str, url: str) -> Tuple[bool, str]:
     markers = 0
     details = []
 
+    # НОВОЕ: маркер для блогов и старых сайтов (дата в URL)
+    if re.search(r'/\d{4}/\d{2}/\d{2}/', url) or re.search(r'/\d{4}/\d{2}/', url):
+        markers += 1
+        details.append("url_date")
+
     # Маркер 1: published_at
     has_pubdate = bool(tree.xpath(
         "//meta[@property='article:published_time']/@content or "
@@ -353,6 +358,15 @@ async def parse_article(url: str, client: httpx.AsyncClient) -> Optional[Article
                 t_title = tree.xpath("//title/text()")
                 if t_title and not _is_bad_title(t_title[0], url):
                     title = t_title[0].strip()
+
+    # НОВОЕ: если title всё ещё плохой (например, "colonelcassad"), 
+    # берём первые 60 символов текста как заголовок
+    if _is_bad_title(title, url):
+        fallback_title = text[:60].strip().replace('\n', ' ')
+        if len(fallback_title) > 10:
+            title = fallback_title + "..."
+        else:
+            title = "Без заголовка"
 
     if not title:
         title = "Без заголовка"
