@@ -3,7 +3,7 @@ import re
 import logging
 from datetime import datetime
 from urllib.parse import urlparse, urljoin
-from typing import List, Optional
+from typing import List, Optional, Tuple
 import httpx
 from playwright.async_api import async_playwright
 from trafilatura import extract, extract_metadata
@@ -17,7 +17,7 @@ SOURCES = settings.SOURCES
 OUTPUT_DIR = settings.OUTPUT_DIR
 SKIP_EXTENSIONS = settings.SKIP_EXTENSIONS
 MIN_TEXT_LENGTH = settings.MIN_TEXT_LENGTH
-ARTICLE_URL_PATTERNS = settings.ARTICLE_URL_PATTERNS   # <-- добавлено
+ARTICLE_URL_PATTERNS = settings.ARTICLE_URL_PATTERNS
 
 # --------------------- Логгер ---------------------
 logger = logging.getLogger(__name__)
@@ -45,6 +45,39 @@ CONTENT_SELECTORS = [
     ".post-content",
     ".entry-content"
 ]
+
+# НОВОЕ (уровень 2.1): чёрный список URL-путей.
+# Работает для любой тематики — это индексные, служебные, юридические страницы,
+# а не «новостные» в узком смысле.
+BLACKLIST_URL_PATTERNS = [
+    r'/news/?$',              # голый индекс /news/ (interfax)
+    r'/story/?$',             # голый индекс /story/ (interfax)
+    r'/about/?$',
+    r'/contacts?/?$',
+    r'/policy/?$',
+    r'/privacy/?$',
+    r'/rules/?$',
+    r'/recommendation',
+    r'/rss/?$',
+    r'/feed/?$',
+    r'/tag/',
+    r'/category/',
+    r'/archive/',
+    r'/search',
+    r'/login',
+    r'/register',
+    r'/sitemap',
+]
+
+# НОВОЕ (уровень 2.2): "плохие" заголовки индексных/служебных страниц.
+# Универсально для любой тематики.
+BAD_TITLES = {
+    "новости", "сюжеты", "о компании", "новости за",
+    "политика конфиденциальности", "правила применения",
+    "правила использования", "правила применения рекомендательных технологий",
+    "архив", "все материалы", "фотогалереи", "фотохроника",
+    "проекты", "о нас", "контакты", "реклама", "подписка",
+}
 
 # --------------------- HTTP и Playwright ---------------------
 
@@ -150,12 +183,132 @@ async def extract_text_from_page(html: str, page=None) -> str:
 
     return text[:20000] if text else ""
 
+# --------------------- НОВОЕ (уровень 2.2): проверка "это статья?" ---------------------
+
+def _is_bad_title(t: str) -> bool:
+    """Заголовок похож на дату/служебный, а не на название материала."""
+    if not t or len(t.strip()) < 10:
+        return True
+    t = t.strip()
+    # "03 November 2026 - Colonel Cassad"
+    if re.match(
+        r'^\d{1,2}\s+'
+        r'(January|February|March|April|May|June|July|August|September|October|November|December)'
+        r'\s+\d{4}\s*[-—:]',
+        t, re.IGNORECASE
+    ):
+        return True
+    # "03 ноября 2026 - ..."
+    if re.match(
+        r'^\d{1,2}\s+'
+        r'(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря)'
+        r'\s+\d{4}\s*[-—:]',
+        t, re.IGNORECASE
+    ):
+        return True
+    # "2026-11-03 ..."
+    if re.match(r'^\d{4}-\d{2}-\d{2}', t):
+        return True
+    return False
+
+
+def is_article_page(html: str, url: str) -> Tuple[bool, str]:
+    """
+    Структурная эвристика: является ли HTML-страница статьёй любого жанра,
+    а не индексной/служебной страницей.
+
+    Правило: 2 из 3 структурных маркеров:
+      1) есть published_at (meta/time/itemprop);
+      2) ровно один <h1> с осмысленным текстом;
+      3) низкая плотность анкоров в основном тексте (< 0.35).
+
+    Тематика (спорт, мода, политика, авто...) не важна — проверка жанро-нейтральна.
+    """
+    if not html:
+        return False, "no_html"
+
+    try:
+        tree = lxml_html.fromstring(html)
+    except Exception as e:
+        return False, f"parse_error:{type(e).__name__}"
+
+    # Быстрая проверка: заголовок индексной/служебной страницы
+    title_xpath = tree.xpath("//meta[@property='og:title']/@content | //title/text()")
+    title_raw = (title_xpath[0].strip().lower() if title_xpath else "")
+    # отрезаем типичный суффикс "— сайт.ru"
+    title_core = re.split(r'\s*[-—|]\s*', title_raw)[0].strip() if title_raw else ""
+    if title_core in BAD_TITLES or title_raw in BAD_TITLES:
+        return False, f"bad_title:{title_core[:40] or title_raw[:40]}"
+    if title_raw.startswith("новости за"):
+        return False, "index_news_by_date"
+
+    markers = 0
+    details = []
+
+    # Маркер 1: published_at
+    has_pubdate = bool(tree.xpath(
+        "//meta[@property='article:published_time']/@content or "
+        "//meta[@property='og:article:published_time']/@content or "
+        "//meta[@name='date']/@content or "
+        "//meta[@name='publish-date']/@content or "
+        "//meta[@name='pubdate']/@content or "
+        "//time[@datetime]/@datetime or "
+        "//*[@itemprop='datePublished']/@content or "
+        "//*[@itemprop='datePublished']/text()"
+    ))
+    if has_pubdate:
+        markers += 1
+        details.append("pubdate")
+
+    # Маркер 2: единственный <h1> с осмысленным текстом
+    h1_list = tree.xpath("//h1")
+    if len(h1_list) == 1:
+        h1_text = (h1_list[0].text_content() or "").strip()
+        if len(h1_text) >= 10 and not _is_bad_title(h1_text):
+            markers += 1
+            details.append("h1")
+
+    # Маркер 3: низкая плотность анкоров в основном тексте
+    link_ratio = 1.0
+    body = tree.xpath("//body")
+    if body:
+        try:
+            # Удаляем навигацию/футер/сайдбар, чтобы не портили плотность
+            for bad in body[0].xpath(".//nav | .//footer | .//aside | .//header"):
+                parent = bad.getparent()
+                if parent is not None:
+                    parent.remove(bad)
+            body_text = body[0].text_content() or ""
+            links = body[0].xpath(".//a")
+            link_text = " ".join((l.text_content() or "") for l in links)
+            total_len = max(len(body_text), 1)
+            link_ratio = len(link_text) / total_len
+        except Exception:
+            link_ratio = 1.0
+
+    if link_ratio < 0.35:
+        markers += 1
+        details.append(f"links={link_ratio:.2f}")
+    else:
+        details.append(f"links={link_ratio:.2f}!high")
+
+    if markers >= 2:
+        return True, "ok(" + ",".join(details) + ")"
+    return False, "not_article(" + ",".join(details) + ")"
+
+
 # --------------------- Парсинг статьи ---------------------
 
 async def parse_article(url: str, client: httpx.AsyncClient) -> Optional[Article]:
     html = await fetch_html(url, client)
     if not html:
         logger.info(f"    skip[fetch]: {url}")
+        return None
+
+    # НОВОЕ (уровень 2.2): проверяем, что это статья, а не индекс/справка
+    is_article, reason = is_article_page(html, url)
+    if not is_article:
+        logger.info(f"    skip[{reason}]: {url}")
         return None
 
     text = await extract_text_from_page(html, page=None)
@@ -176,11 +329,28 @@ async def parse_article(url: str, client: httpx.AsyncClient) -> Optional[Article
     author = meta.author.strip() if meta and meta.author else None
     pub_date = meta.date if meta and meta.date else None
 
+    tree = lxml_html.fromstring(html)
+
+    # НОВОЕ (уровень 2.3): каскад извлечения title.
+    # Если trafilatura вернул дату ("03 November 2026 - Colonel Cassad") или мусор —
+    # пробуем og:title, затем единственный h1, затем <title>.
+    if _is_bad_title(title):
+        og_title = tree.xpath("//meta[@property='og:title']/@content")
+        if og_title and not _is_bad_title(og_title[0]):
+            title = og_title[0].strip()
+        else:
+            h1 = tree.xpath("//h1")
+            if len(h1) == 1:
+                h1_text = " ".join(x.strip() for x in h1[0].itertext() if x.strip())
+                if not _is_bad_title(h1_text):
+                    title = h1_text
+            if _is_bad_title(title):
+                t_title = tree.xpath("//title/text()")
+                if t_title and not _is_bad_title(t_title[0]):
+                    title = t_title[0].strip()
+
     if not title:
-        tree = lxml_html.fromstring(html)
-        title_elem = tree.xpath("//title/text()")
-        if title_elem:
-            title = title_elem[0].strip()
+        title = "Без заголовка"
 
     published_at = None
     if pub_date:
@@ -192,7 +362,7 @@ async def parse_article(url: str, client: httpx.AsyncClient) -> Optional[Article
     return Article(
         source=urlparse(url).netloc,
         url=url,
-        title=title or "Без заголовка",
+        title=title,
         body=text[:20000],
         author=author,
         published_at=published_at,
@@ -206,9 +376,13 @@ def is_article_url(url: str) -> bool:
     if any(url.lower().endswith(ext) for ext in SKIP_EXTENSIONS):
         return False
     # Исключаем явно служебные страницы
-    excluded = ['#', '?', 'search', 'tag', 'category', 'contact', 'about', 'login', 'register', 'feed', 'sitemap', 'javascript:']
+    excluded = ['#', 'search', 'tag', 'category', 'contact', 'about', 'login', 'register', 'feed', 'sitemap', 'javascript:']
     if any(x in url.lower() for x in excluded):
         return False
+    # НОВОЕ (уровень 2.1): чёрный список путей
+    for bp in BLACKLIST_URL_PATTERNS:
+        if re.search(bp, url.lower()):
+            return False
     for pattern in ARTICLE_URL_PATTERNS:
         if re.search(pattern, url):
             return True
@@ -337,6 +511,7 @@ async def fetch_articles_from_source(
         if not links:
             logger.info("    Ссылок на статьи не найдено")
             return []
+
         tasks = [parse_article(url, client) for url in links]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         articles = []

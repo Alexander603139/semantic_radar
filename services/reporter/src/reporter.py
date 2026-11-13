@@ -111,16 +111,31 @@ def create_drift_gauge(drift_score: float) -> go.Figure:
 
 def create_cluster_visualization(cluster_details: Dict[str, Any]) -> Optional[go.Figure]:
     """
-    Строит 2D scatter кластеров по UMAP-координатам из cluster_details.current_week.visualization.
-    Если данных нет — возвращает None.
+    Строит 2D scatter кластеров по UMAP-координатам.
+    Названия кластеров в легенде берутся из cluster_details.current_week.clusters[i].terms
+    (топ-5 частотных слов, посчитанных в analyzer).
     """
     current = cluster_details.get("current_week", {}) or {}
     points = current.get("visualization") or []
+    clusters_info = current.get("clusters") or {}
 
     if not points:
         logger.info("Нет данных для визуализации кластеров")
         return None
 
+    def cluster_label(label: int) -> str:
+        """Человекочитаемое имя кластера: 'Кластер 0 (25): Иванов, переговоры, Кремль'."""
+        if label == -1:
+            return "Шум (без кластера)"
+        info = clusters_info.get(f"cluster_{label}") or {}
+        terms = info.get("terms") or []
+        size = info.get("size", 0)
+        if terms:
+            top = ", ".join(terms[:3])
+            return f"Кластер {label} ({size}): {top}"
+        return f"Кластер {label} ({size})"
+
+    # Группируем точки по метке кластера
     clusters: Dict[int, list] = {}
     for p in points:
         clusters.setdefault(int(p["label"]), []).append(p)
@@ -132,17 +147,15 @@ def create_cluster_visualization(cluster_details: Dict[str, Any]) -> Optional[go
         pts = clusters[label]
         if label == -1:
             color = "lightgray"
-            name = "Шум (без кластера)"
         else:
             color = palette[label % len(palette)]
-            name = f"Кластер {label}"
 
         fig.add_trace(go.Scattergl(
             x=[p["x"] for p in pts],
             y=[p["y"] for p in pts],
             mode="markers",
             marker=dict(size=6, color=color, opacity=0.75),
-            name=name,
+            name=cluster_label(label),
             text=[f"{p.get('source','')}: {p.get('title','')}" for p in pts],
             hovertemplate="<b>%{text}</b><br>x: %{x:.2f}, y: %{y:.2f}<extra></extra>",
         ))
@@ -152,7 +165,11 @@ def create_cluster_visualization(cluster_details: Dict[str, Any]) -> Optional[go
         xaxis=dict(title="UMAP-1", showticklabels=False, zeroline=False),
         yaxis=dict(title="UMAP-2", showticklabels=False, zeroline=False),
         margin=dict(l=20, r=20, t=20, b=40),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom", y=1.02,
+            xanchor="right", x=1,
+        ),
         hovermode="closest",
     )
     return fig
