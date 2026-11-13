@@ -127,16 +127,20 @@ def perform_clustering(embeddings: np.ndarray) -> Tuple[np.ndarray, Any, Any]:
     embeddings_scaled = scaler.fit_transform(embeddings)
     n_samples = embeddings_scaled.shape[0]
 
-    # UMAP: n_neighbors и n_components не должны превышать выборку
-    n_neighbors = min(15, max(2, n_samples - 1))
-    n_components = min(settings.UMAP_N_COMPONENTS, max(2, n_samples - 2))
-    reducer = umap.UMAP(
-        n_components=n_components,
-        n_neighbors=n_neighbors,
-        min_dist=0.0,
-        random_state=42,
-    )
-    embedding_umap = reducer.fit_transform(embeddings_scaled)
+    # Если статей меньше 4, UMAP упадет. Используем исходные эмбеддинги.
+    if n_samples < 4:
+        logger.warning(f"Мало данных для UMAP (n_samples={n_samples}), используем исходные векторы")
+        embedding_umap = embeddings_scaled
+    else:
+        n_neighbors = min(15, max(2, n_samples - 1))
+        n_components = min(settings.UMAP_N_COMPONENTS, max(2, n_samples - 2))
+        reducer = umap.UMAP(
+            n_components=n_components,
+            n_neighbors=n_neighbors,
+            min_dist=0.0,
+            random_state=42,
+        )
+        embedding_umap = reducer.fit_transform(embeddings_scaled)
 
     # HDBSCAN: адаптивные параметры
     min_cluster_size = max(3, min(settings.HDBSCAN_MIN_CLUSTER_SIZE, n_samples // 4))
@@ -180,20 +184,23 @@ def build_cluster_visualization_data(
     if embeddings.shape[0] < 2 or len(labels) == 0:
         return []
 
-    try:
-        scaler = StandardScaler()
-        scaled = scaler.fit_transform(embeddings)
-        n_samples = scaled.shape[0]
-        n_neighbors = min(15, max(2, n_samples - 1))
-        reducer = umap.UMAP(
-            n_components=2,
-            n_neighbors=n_neighbors,
-            random_state=42,
-        )
-        coords = reducer.fit_transform(scaled)
-    except Exception as e:
-        logger.warning(f"Не удалось построить 2D-проекцию UMAP: {e}")
-        return []
+    if embeddings.shape[0] < 4:
+        # Для 2-3 статей UMAP не работает, просто расставляем точки
+        coords = np.zeros((embeddings.shape[0], 2))
+        for i in range(embeddings.shape[0]):
+            coords[i][0] = i
+            coords[i][1] = (-1)**i
+    else:
+        try:
+            scaler = StandardScaler()
+            scaled = scaler.fit_transform(embeddings)
+            n_samples = scaled.shape[0]
+            n_neighbors = min(15, max(2, n_samples - 1))
+            reducer = umap.UMAP(n_components=2, n_neighbors=n_neighbors, random_state=42)
+            coords = reducer.fit_transform(scaled)
+        except Exception as e:
+            logger.warning(f"Не удалось построить 2D-проекцию UMAP: {e}")
+            return []
 
     has_title = "title" in df.columns
     has_source = "source" in df.columns
