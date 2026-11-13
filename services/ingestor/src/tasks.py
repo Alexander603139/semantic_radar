@@ -63,7 +63,7 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
         
         if all_links:
             logger.info("⏳ Начинаем параллельный парсинг статей...")
-            dummy_stats = {}
+            dummy_stats = {"articles_parsed": 0, "articles_skipped": 0, "articles_error": 0}
             async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
                 all_articles = await parse_articles_from_links(all_links, client, dummy_stats)
             logger.info(f"✅ Спарсено статей: {len(all_articles)}")
