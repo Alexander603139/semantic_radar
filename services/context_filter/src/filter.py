@@ -27,7 +27,7 @@ async def filter_articles_by_context(
             articles=[], scores={}, embeddings=None
         )
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=180.0) as client:
         # 1. Узнаем активную модель пользователя
         try:
             settings_resp = await client.get(f"{settings.STORAGE_URL}/settings/{user_id}")

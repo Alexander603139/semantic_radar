@@ -269,7 +269,7 @@ def is_article_page(html: str, url: str) -> Tuple[bool, str]:
     h1_list = tree.xpath("//h1")
     if len(h1_list) == 1:
         h1_text = (h1_list[0].text_content() or "").strip()
-        if len(h1_text) >= 10 and not _is_bad_title(h1_text):
+        if len(h1_text) >= 10 and not _is_bad_title(h1_text, url):
             markers += 1
             details.append("h1")
 
@@ -339,19 +339,19 @@ async def parse_article(url: str, client: httpx.AsyncClient) -> Optional[Article
     # НОВОЕ (уровень 2.3): каскад извлечения title.
     # Если trafilatura вернул дату ("03 November 2026 - Colonel Cassad") или мусор —
     # пробуем og:title, затем единственный h1, затем <title>.
-    if _is_bad_title(title):
+    if _is_bad_title(title, url):
         og_title = tree.xpath("//meta[@property='og:title']/@content")
-        if og_title and not _is_bad_title(og_title[0]):
+        if og_title and not _is_bad_title(og_title[0], url):
             title = og_title[0].strip()
         else:
             h1 = tree.xpath("//h1")
             if len(h1) == 1:
                 h1_text = " ".join(x.strip() for x in h1[0].itertext() if x.strip())
-                if not _is_bad_title(h1_text):
+                if not _is_bad_title(h1_text, url):
                     title = h1_text
-            if _is_bad_title(title):
+            if _is_bad_title(title, url):
                 t_title = tree.xpath("//title/text()")
-                if t_title and not _is_bad_title(t_title[0]):
+                if t_title and not _is_bad_title(t_title[0], url):
                     title = t_title[0].strip()
 
     if not title:
