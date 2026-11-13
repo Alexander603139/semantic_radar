@@ -51,7 +51,7 @@ CONTENT_SELECTORS = [
 # а не «новостные» в узком смысле.
 BLACKLIST_URL_PATTERNS = [
     r'/news/?$',              # голый индекс /news/ (interfax)
-    r'/story/?$',             # голый индекс /story/ (interfax)
+    r'/story/',            # любой /story/ — это раздел/сюжет, не статья (RBC, interfax)
     r'/about/?$',
     r'/contacts?/?$',
     r'/policy/?$',
