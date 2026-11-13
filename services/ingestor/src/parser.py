@@ -214,7 +214,6 @@ def _is_bad_title(t: str, url: str = "") -> bool:
         domain_part = urlparse(url).netloc.lower().split('.')[0]
         if domain_part and domain_part in t.lower().replace(' ', ''):
             return True
-    return Falseue
     return False
 
 
