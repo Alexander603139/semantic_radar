@@ -484,34 +484,12 @@ async def get_article_links(source_url: str, client: httpx.AsyncClient) -> List[
         return links
     return await get_article_links_from_html(source_url, client)
 
-# --------------------- Основная функция для источника ---------------------
+# --------------------- Основные функция для источника ---------------------
 
-async def fetch_articles_from_source(
-    source_url: str,
-    limit: int = 5,
-    stats: Optional[dict] = None,
-) -> List[Article]:
-    if stats is None:
-        stats = {}
-    # Инициализируем нулями — чтобы в отчёте всегда были все ключи
-    stats.update({
-        "links_rss": 0,
-        "links_html": 0,
-        "links_total": 0,
-        "links_used": 0,
-        "articles_parsed": 0,
-        "articles_skipped": 0,
-        "articles_error": 0,
-        "fetch_method": "none",
-        "rss_urls_tried": 0,
-    })
-
-    logger.info(f"\nОбработка источника: {source_url}")
+async def collect_links_from_source(source_url: str, limit: int, stats: dict) -> List[str]:
+    """Только собирает ссылки на статьи с одного источника."""
+    logger.info(f"\nСбор ссылок: {source_url}")
     async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
-        # Пробуем RSS — считаем, сколько путей проверено
-        rss_paths = ['/rss', '/feed', '/rss.xml', '/feed.xml', '/xml']
-        stats["rss_urls_tried"] = len(rss_paths)
-
         rss_links = await get_article_links_from_rss(source_url, client)
         stats["links_rss"] = len(rss_links)
 
@@ -526,22 +504,49 @@ async def fetch_articles_from_source(
         stats["links_total"] = len(links)
         links = links[:limit]
         stats["links_used"] = len(links)
+        return links
 
-        if not links:
-            logger.info("    Ссылок на статьи не найдено")
-            return []
+async def parse_articles_from_links(
+    links: List[str], 
+    client: httpx.AsyncClient, 
+    stats: dict
+) -> List[Article]:
+    """Параллельно скачивает и парсит статьи по списку ссылок."""
+    if not links:
+        return []
 
-        tasks = [parse_article(url, client) for url in links]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        articles = []
-        for res in results:
-            if isinstance(res, Article):
-                articles.append(res)
-                stats["articles_parsed"] += 1
-            elif isinstance(res, Exception):
-                stats["articles_error"] += 1
-                logger.info(f"    Ошибка парсинга: {res}")
-            else:
-                # None — отсеяно по длине текста или fetch не удался
-                stats["articles_skipped"] += 1
-        return articles
+    tasks = [parse_article(url, client) for url in links]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    
+    articles = []
+    for res in results:
+        if isinstance(res, Article):
+            articles.append(res)
+            stats["articles_parsed"] += 1
+        elif isinstance(res, Exception):
+            stats["articles_error"] += 1
+            logger.info(f"    Ошибка парсинга: {res}")
+        else:
+            stats["articles_skipped"] += 1
+    return articles
+
+async def fetch_articles_from_source(
+    source_url: str,
+    limit: int = 5,
+    stats: Optional[dict] = None,
+) -> List[Article]:
+    """Обертка для обратной совместимости (использует новые функции)."""
+    if stats is None:
+        stats = {}
+    stats.update({
+        "links_rss": 0, "links_html": 0, "links_total": 0, "links_used": 0,
+        "articles_parsed": 0, "articles_skipped": 0, "articles_error": 0,
+        "fetch_method": "none", "rss_urls_tried": 5,
+    })
+
+    links = await collect_links_from_source(source_url, limit, stats)
+    if not links:
+        return []
+
+    async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
+        return await parse_articles_from_links(links, client, stats)
