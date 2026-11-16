@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from typing import List
 import logging
-from .parser import fetch_articles_from_source, collect_links_from_source, parse_articles_from_links, DEFAULT_TIMEOUT
+from .parser import fetch_articles_from_source, collect_links_from_source, parse_articles_from_links, parse_article, DEFAULT_TIMEOUT
 from .models import Article
 from .settings import settings
 from .embedder_client import call_embedder
@@ -30,7 +30,7 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
         # ==========================================
         # ШАГ 1: СБОР ССЫЛОК (быстро)
         # ==========================================
-        all_links = []
+        links_by_source = {}
         per_source_stats = {}
         failed_sources = []
         empty_sources = []
@@ -41,19 +41,21 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
                 "articles_parsed": 0, "articles_skipped": 0, "articles_error": 0,
                 "fetch_method": "none"
             }
+            domain = site.split('/')[2] if '/' in site else site
             try:
                 links = await collect_links_from_source(site, limit, stats)
                 if links:
-                    all_links.extend(links)
+                    links_by_source[domain] = links  # <--- ИЗМЕНЕНО
                 else:
-                    empty_sources.append(site.split('/')[2] if '/' in site else site)
+                    empty_sources.append(domain)
             except Exception as e:
                 stats["error"] = str(e)
-                failed_sources.append(site.split('/')[2] if '/' in site else site)
+                failed_sources.append(domain)
                 logger.error(f"❌ Ошибка при сборе ссылок {site}: {e}")
-            per_source_stats[site.split('/')[2] if '/' in site else site] = stats
+            per_source_stats[domain] = stats
 
-        logger.info(f"🔗 Всего собрано ссылок: {len(all_links)}")
+        total_links = sum(len(links) for links in links_by_source.values())
+        logger.info(f"🔗 Всего собрано ссылок: {total_links}")
 
         # ==========================================
         # ШАГ 2: ПАРСИНГ СТАТЕЙ (параллельно)
@@ -61,26 +63,29 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
         all_articles = []
         articles_by_source = {}
         
-        if all_links:
+        if links_by_source:
             logger.info("⏳ Начинаем параллельный парсинг статей...")
-            dummy_stats = {"articles_parsed": 0, "articles_skipped": 0, "articles_error": 0}
             async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
-                all_articles = await parse_articles_from_links(all_links, client, dummy_stats)
+                for domain, links in links_by_source.items():
+                    tasks = [parse_article(url, client) for url in links]
+                    results = await asyncio.gather(*tasks, return_exceptions=True)
+                    
+                    for res in results:
+                        if isinstance(res, Article):
+                            all_articles.append(res)
+                            source_name = res.source or "unknown"
+                            articles_by_source.setdefault(source_name, []).append(res)
+                            per_source_stats[domain]["articles_parsed"] += 1
+                        elif isinstance(res, Exception):
+                            per_source_stats[domain]["articles_error"] += 1
+                            logger.info(f"    Ошибка парсинга: {res}")
+                        else:
+                            per_source_stats[domain]["articles_skipped"] += 1
             logger.info(f"✅ Спарсено статей: {len(all_articles)}")
-
-        # Распределяем статьи по источникам
-        from urllib.parse import urlparse
-        for art in all_articles:
-            source_name = art.source or "unknown"
-            articles_by_source.setdefault(source_name, []).append(art)
-
-        # Обновляем articles_parsed в per_source_stats
-        for site_name, stats in per_source_stats.items():
-            if site_name in articles_by_source:
-                stats["articles_parsed"] = len(articles_by_source[site_name])
 
         total_collected = len(all_articles)
         logger.info(f"📊 Всего собрано статей: {total_collected}")
+
         if failed_sources:
             logger.warning(f"⚠️ Недоступно сайтов: {len(failed_sources)} ({', '.join(failed_sources)})")
         if empty_sources:
@@ -220,7 +225,7 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
             "per_source": per_source_stats,
             "filter_status": filter_status,
             "filter_stats": filter_stats,
-            "total_links": len(all_links),
+            "total_links": total_links,
         }
         logger.info(f"Задача {task_id} завершена: собрано {total_collected}, после фильтра {len(all_articles)}")
         
