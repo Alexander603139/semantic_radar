@@ -137,8 +137,6 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
                         f"✅ Фильтр: получено {filter_data['total_received']}, "
                         f"прошло {filter_data['total_passed']}, отклонено {filter_data['total_filtered']}"
                     )
-                    
-                    from .models import Article
                     all_articles = [Article(**art) for art in filter_data["articles"]]
                     articles_by_source = {}
 
