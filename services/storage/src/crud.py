@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from .models import AIModel
 import uuid
 from . import models, schemas
+from datetime import datetime, timedelta
 from sqlalchemy import func
 
 def create_file_record(db: Session, file_data: schemas.FileCreate, storage_path: str, checksum: str = None) -> models.FileRecord:
@@ -92,3 +93,39 @@ def count_vectors(db: Session, user_id: str, model_slug: str = None) -> int:
             if f.extra_metadata and f.extra_metadata.get("model_slug") == model_slug
         ]
     return len(files)
+
+def create_source_stats(db: Session, stats_dict: dict):
+    """Сохраняет статистику по источникам после парсинга."""
+    for source_name, data in stats_dict.items():
+        status = "ok"
+        if data.get("error"):
+            status = "error"
+        elif data.get("articles_parsed", 0) == 0:
+            status = "empty"
+
+        stat = models.SourceStat(
+            source_name=source_name,
+            links_found=data.get("links_total", 0),
+            articles_parsed=data.get("articles_parsed", 0),
+            articles_skipped=data.get("articles_skipped", 0),
+            articles_error=data.get("articles_error", 0),
+            status=status
+        )
+        db.add(stat)
+    db.commit()
+
+def get_source_stats(db: Session, days: int = 7):
+    """Возвращает агрегированную статистику по источникам за N дней."""
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    results = db.query(
+        models.SourceStat.source_name,
+        func.sum(models.SourceStat.articles_parsed).label("total_parsed"),
+        func.sum(models.SourceStat.articles_skipped).label("total_skipped"),
+        func.sum(models.SourceStat.articles_error).label("total_errors"),
+        func.max(models.SourceStat.timestamp).label("last_run")
+    ).filter(
+        models.SourceStat.timestamp >= cutoff
+    ).group_by(
+        models.SourceStat.source_name
+    ).all()
+    return results

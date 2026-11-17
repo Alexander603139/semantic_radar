@@ -57,3 +57,15 @@ class AIModel(Base):
     requires_prefix = Column(Boolean, default=False) # Нужно ли добавлять 'passage:' / 'query:'
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class SourceStat(Base):
+    __tablename__ = "source_stats"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    source_name = Column(String(255), nullable=False, index=True)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    links_found = Column(Integer, default=0)
+    articles_parsed = Column(Integer, default=0)
+    articles_skipped = Column(Integer, default=0)
+    articles_error = Column(Integer, default=0)
+    status = Column(String(50), default="ok") # "ok", "error", "empty"

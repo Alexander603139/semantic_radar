@@ -76,3 +76,10 @@ class UserSettingsResponse(BaseModel):
     last_fallback_event: Optional[Dict[str, Any]] = None
     default_limit: Optional[int] = None
     default_weeks: Optional[int] = None
+
+class SourceStatResponse(BaseModel):
+    source_name: str
+    total_parsed: int
+    total_skipped: int
+    total_errors: int
+    last_run: Optional[datetime] = None

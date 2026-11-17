@@ -112,7 +112,7 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
             if context:
                 logger.info(f"🎯 Применяем семантический фильтр: контекст='{context}', порог={threshold}")
                 try:
-                    async with httpx.AsyncClient(timeout=120.0) as client:
+                    async with httpx.AsyncClient(timeout=300.0) as client:
                         filter_resp = await client.post(
                             "http://context_filter:8010/filter",
                             json={
@@ -212,7 +212,21 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
             except Exception as e:
                 logger.error(f"Ошибка при автоматическом анализе/отчёте для {user_id}: {e}")
         
+        # ==========================================
+        # ШАГ 6: ОТПРАВКА СТАТИСТИКИ В STORAGE
+        # ==========================================
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                await client.post(
+                    f"{settings.STORAGE_URL}/stats",
+                    json=per_source_stats
+                )
+            logger.info("📈 Статистика по источникам отправлена в storage")
+        except Exception as e:
+            logger.error(f"⚠️ Не удалось отправить статистику: {e}")
+
         tasks_store[task_id]["status"] = "completed"
+        
         tasks_store[task_id]["result"] = {
             "total_collected": total_collected,
             "total_articles": len(all_articles),

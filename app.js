@@ -416,6 +416,57 @@ async function loadSources() {
     }
 }
 
+// ---------- ЗДОРОВЬЕ ИСТОЧНИКОВ ----------
+async function loadSourceHealth() {
+    const container = document.getElementById('sourceHealthContainer');
+    if (!container) return; // Защита
+    container.innerHTML = '<p class="text-muted">⏳ Загрузка...</p>';
+    
+    try {
+        const resp = await fetch(`${BASE_URL}/storage/stats?days=7`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        
+        if (!data || data.length === 0) {
+            container.innerHTML = '<p class="text-muted">Нет данных за последние 7 дней.</p>';
+            return;
+        }
+        
+        let html = `<div class="table-wrap"><table>
+            <thead><tr>
+                <th>Источник</th>
+                <th>Статус</th>
+                <th>Статей</th>
+                <th>Пропущено</th>
+                <th>Ошибки</th>
+                <th>Последний запуск</th>
+            </tr></thead><tbody>`;
+            
+        for (const s of data) {
+            let statusDot = '<span class="dot green"></span> OK';
+            if (s.total_errors > 0) statusDot = '<span class="dot red"></span> Ошибки';
+            else if (s.total_parsed === 0) statusDot = '<span class="dot gray"></span> Пусто';
+            
+            const lastRun = s.last_run ? new Date(s.last_run).toLocaleString() : '—';
+            
+            html += `<tr>
+                <td><b>${s.source_name}</b></td>
+                <td style="display:flex; align-items:center; gap:6px;">${statusDot}</td>
+                <td>${s.total_parsed}</td>
+                <td>${s.total_skipped}</td>
+                <td>${s.total_errors}</td>
+                <td>${lastRun}</td>
+            </tr>`;
+        }
+        html += `</tbody></table></div>`;
+        container.innerHTML = html;
+        
+    } catch (e) {
+        container.innerHTML = `<p class="text-muted">❌ Ошибка: ${e.message}</p>`;
+        log(`Ошибка загрузки здоровья источников: ${e.message}`, 'error');
+    }
+}
+
 async function saveSources() {
     const sources = sourcesTextarea.value.split('\n').map(s => s.trim()).filter(s => s);
     if (sources.length === 0) {
@@ -1077,6 +1128,7 @@ document.getElementById('deleteLastVectorBtn').addEventListener('click', deleteL
 document.getElementById('deleteLastReportBtn').addEventListener('click', deleteLastReport);
 document.getElementById('deleteAllArticlesBtn').addEventListener('click', deleteAllArticles);
 document.getElementById('deleteLastArticleBtn').addEventListener('click', deleteLastArticle);
+document.getElementById('refreshHealthBtn').addEventListener('click', loadSourceHealth);
 
 saveActiveModelBtn.addEventListener('click', updateActiveModel);
 loadModelsBtn.addEventListener('click', loadModels);
@@ -1090,6 +1142,7 @@ loadThresholdBtn.addEventListener('click', loadContext);  // загружает 
 saveThresholdBtn.addEventListener('click', saveThreshold);
 resetThresholdBtn.addEventListener('click', resetThreshold);
 
+
 // ---------- ИНИЦИАЛИЗАЦИЯ ----------
 async function init() {
     log('🚀 Загрузка админ-панели...', 'info');
@@ -1098,6 +1151,7 @@ async function init() {
     await loadVectors();
     await loadReports();
     await loadSources();
+    await loadSourceHealth();
     await loadCron();
     await loadModels();
     await checkVectorsAndToggleSaveButton();

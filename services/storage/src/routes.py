@@ -169,3 +169,23 @@ async def count_vectors(
     """Возвращает количество векторов пользователя (опционально — по модели)."""
     count = crud.count_vectors(db, user_id, model_slug)
     return {"user_id": user_id, "model_slug": model_slug, "count": count}
+
+@router.post("/stats")
+async def save_stats(stats: dict, db: Session = Depends(get_db)):
+    """Принимает статистику от ingestor и сохраняет в БД."""
+    crud.create_source_stats(db, stats)
+    return {"status": "ok"}
+
+@router.get("/stats", response_model=List[schemas.SourceStatResponse])
+async def get_stats(days: int = 7, db: Session = Depends(get_db)):
+    """Отдаёт агрегированную статистику для админки."""
+    results = crud.get_source_stats(db, days)
+    return [
+        schemas.SourceStatResponse(
+            source_name=r.source_name,
+            total_parsed=r.total_parsed or 0,
+            total_skipped=r.total_skipped or 0,
+            total_errors=r.total_errors or 0,
+            last_run=r.last_run
+        ) for r in results
+    ]
