@@ -396,7 +396,7 @@ async function loadSources() {
         }
         // Устанавливаем активную модель в селект
         if (data.active_model_slug && activeModelSelect) {
-            setTimeout(() => { activeModelSelect.value = data.active_model_slug; }, 100);
+            activeModelSelect.value = data.active_model_slug;
         }
         // Отображаем индикатор fallback
         const fallbackIndicator = document.getElementById('fallbackIndicator');
@@ -1220,10 +1220,10 @@ async function init() {
     await loadArticles();
     await loadVectors();
     await loadReports();
+    await loadModels();
     await loadSources();
     await loadSourceHealth();
     await loadCron();
-    await loadModels();
     await checkVectorsAndToggleSaveButton();
     await loadContext();
     await loadQuickActionsSettings();
