@@ -1100,6 +1100,75 @@ async function saveQuickActionsSettings() {
     }
 }
 
+// ---------- ТОНКАЯ НАСТРОЙКА ИСТОЧНИКОВ ----------
+async function loadSourceConfigs() {
+    const container = document.getElementById('sourceConfigsList');
+    if (!container) return;
+    try {
+        const resp = await fetch(`${BASE_URL}/storage/settings/admin`);
+        const data = await resp.json();
+        const configs = data.source_configs || {};
+        
+        if (Object.keys(configs).length === 0) {
+            container.innerHTML = '<p class="text-muted">Нет кастомных настроек.</p>';
+            return;
+        }
+        
+        let html = '<div class="table-wrap"><table><thead><tr><th>Домен</th><th>RSS</th><th>Пример ссылки</th><th>JS</th><th>Действие</th></tr></thead><tbody>';
+        for (const [domain, cfg] of Object.entries(configs)) {
+            html += `<tr>
+                <td><b>${domain}</b></td>
+                <td>${cfg.rss_url ? '✅' : '—'}</td>
+                <td>${cfg.example_url ? '✅' : '—'}</td>
+                <td>${cfg.requires_js ? '✅' : '—'}</td>
+                <td><button class="btn btn-danger" onclick="deleteSourceConfig('${domain}')">Удалить</button></td>
+            </tr>`;
+        }
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    } catch (e) {
+        container.innerHTML = `<p class="text-muted">❌ Ошибка: ${e.message}</p>`;
+    }
+}
+
+async function saveSourceConfig() {
+    const domain = document.getElementById('cfgDomain').value.trim();
+    const rss = document.getElementById('cfgRss').value.trim();
+    const example = document.getElementById('cfgExample').value.trim();
+    const reqJs = document.getElementById('cfgRequiresJs').checked;
+    
+    if (!domain) return alert('Введите домен!');
+    
+    const sResp = await fetch(`${BASE_URL}/storage/settings/admin`);
+    const settings = await sResp.json();
+    if (!settings.source_configs) settings.source_configs = {};
+    
+    settings.source_configs[domain] = { rss_url: rss || null, example_url: example || null, requires_js: reqJs };
+    
+    await fetch(`${BASE_URL}/storage/settings/admin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings)
+    });
+    
+    log(`Настройки для ${domain} сохранены`, 'success');
+    loadSourceConfigs();
+}
+
+async function deleteSourceConfig(domain) {
+    const sResp = await fetch(`${BASE_URL}/storage/settings/admin`);
+    const settings = await sResp.json();
+    if (settings.source_configs && settings.source_configs[domain]) {
+        delete settings.source_configs[domain];
+        await fetch(`${BASE_URL}/storage/settings/admin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings)
+        });
+        loadSourceConfigs();
+    }
+}
+
 // ---------- ПРИВЯЗКА СОБЫТИЙ ----------
 runParserBtn.addEventListener('click', runParser);
 runAnalysisBtn.addEventListener('click', runAnalysis);
@@ -1129,6 +1198,7 @@ document.getElementById('deleteLastReportBtn').addEventListener('click', deleteL
 document.getElementById('deleteAllArticlesBtn').addEventListener('click', deleteAllArticles);
 document.getElementById('deleteLastArticleBtn').addEventListener('click', deleteLastArticle);
 document.getElementById('refreshHealthBtn').addEventListener('click', loadSourceHealth);
+document.getElementById('saveSourceConfigBtn').addEventListener('click', saveSourceConfig);
 
 saveActiveModelBtn.addEventListener('click', updateActiveModel);
 loadModelsBtn.addEventListener('click', loadModels);
@@ -1156,7 +1226,8 @@ async function init() {
     await loadModels();
     await checkVectorsAndToggleSaveButton();
     await loadContext();
-    await loadQuickActionsSettings(); 
+    await loadQuickActionsSettings();
+    await loadSourceConfigs(); 
     log('✅ Готово', 'success');
 }
 

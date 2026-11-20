@@ -102,6 +102,21 @@
         </div>
     </div>
 
+    <!-- ТОНКАЯ НАСТРОЙКА ИСТОЧНИКОВ -->
+    <div class="card mt-12">
+        <h3>⚙️ Тонкая настройка источников</h3>
+        <p class="text-muted" style="font-size: 13px;">Если сайт не парсится, укажите прямую ссылку на RSS или пример ссылки на статью.</p>
+        
+        <div class="flex mt-12" style="gap: 10px; align-items: center; flex-wrap: wrap;">
+            <input type="text" id="cfgDomain" class="input-sm" placeholder="Домен (tass.ru)" style="width: 180px;">
+            <input type="text" id="cfgRss" class="input-sm" placeholder="Ссылка на RSS" style="width: 220px;">
+            <input type="text" id="cfgExample" class="input-sm" placeholder="Пример ссылки" style="width: 220px;">
+            <label style="font-size: 13px; color: #8892a0;"><input type="checkbox" id="cfgRequiresJs"> Требует JS</label>
+            <button class="btn btn-success" id="saveSourceConfigBtn">💾 Сохранить</button>
+        </div>
+        <div id="sourceConfigsList" class="mt-12 text-muted">Загрузка...</div>
+    </div>
+
     <!-- УПРАВЛЕНИЕ РАСПИСАНИЕМ -->
     <div class="card mt-12">
     <h3>⏰ Управление расписанием парсинга</h3>

@@ -145,6 +145,8 @@ async def update_user_settings(user_id: str, data: schemas.UserSettingsUpdate, d
     if data.last_fallback_event is not None: settings.last_fallback_event = data.last_fallback_event
     if data.default_limit is not None: settings.default_limit = data.default_limit
     if data.default_weeks is not None: settings.default_weeks = data.default_weeks
+    if data.source_configs is not None: settings.source_configs = data.source_configs
+    
     db.commit()
     db.refresh(settings)
     return schemas.UserSettingsResponse.model_validate(settings)

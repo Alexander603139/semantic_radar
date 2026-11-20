@@ -26,6 +26,18 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
     tasks_store[task_id] = {"status": "running", "result": None, "error": None}
     try:
         logger.info(f"Запуск задачи {task_id} для пользователя {user_id}")
+
+        # Загружаем настройки ОДИН РАЗ в начале
+        user_settings = {}
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(f"{settings.STORAGE_URL}/settings/{user_id}")
+                if resp.status_code == 200:
+                    user_settings = resp.json()
+        except Exception as e:
+            logger.warning(f"Не удалось загрузить настройки: {e}")
+        source_configs = user_settings.get("source_configs", {})
+
         
         # ==========================================
         # ШАГ 1: СБОР ССЫЛОК (быстро)
@@ -42,8 +54,9 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
                 "fetch_method": "none"
             }
             domain = site.split('/')[2] if '/' in site else site
+            site_config = source_configs.get(domain, {})
             try:
-                links = await collect_links_from_source(site, limit, stats)
+                links = await collect_links_from_source(site, limit, stats, config=site_config)
                 if links:
                     links_by_source[domain] = links  # <--- ИЗМЕНЕНО
                 else:
@@ -97,14 +110,14 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
         filter_status = "skipped_no_context"
         filter_stats = {}
         if all_articles:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                try:
-                    settings_resp = await client.get(f"{settings.STORAGE_URL}/settings/{user_id}")
-                    settings_resp.raise_for_status()
-                    user_settings = settings_resp.json()
-                except Exception as e:
-                    logger.warning(f"⚠️ Не удалось загрузить настройки из storage: {e}. Продолжаем без фильтрации.")
-                    user_settings = {}
+            # async with httpx.AsyncClient(timeout=10.0) as client:
+            #     try:
+            #         settings_resp = await client.get(f"{settings.STORAGE_URL}/settings/{user_id}")
+            #         settings_resp.raise_for_status()
+            #         user_settings = settings_resp.json()
+            #     except Exception as e:
+            #         logger.warning(f"⚠️ Не удалось загрузить настройки из storage: {e}. Продолжаем без фильтрации.")
+            #         user_settings = {}
             
             context = (user_settings.get("context") or "").strip()
             threshold = float(user_settings.get("threshold", 0.6))
@@ -239,6 +252,7 @@ async def run_parsing_task(user_id: str, sources: List[str], limit: int, auto_an
             "filter_stats": filter_stats,
             "total_links": total_links,
         }
+
         logger.info(f"Задача {task_id} завершена: собрано {total_collected}, после фильтра {len(all_articles)}")
         
     except Exception as e:

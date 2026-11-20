@@ -64,6 +64,7 @@ class UserSettingsUpdate(BaseModel):
     last_fallback_event: Optional[Dict[str, Any]] = None
     default_limit: Optional[int] = None
     default_weeks: Optional[int] = None
+    source_configs: Optional[Dict[str, Any]] = None
 
 class UserSettingsResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -76,6 +77,7 @@ class UserSettingsResponse(BaseModel):
     last_fallback_event: Optional[Dict[str, Any]] = None
     default_limit: Optional[int] = None
     default_weeks: Optional[int] = None
+    source_configs: Optional[Dict[str, Any]] = None
 
 class SourceStatResponse(BaseModel):
     source_name: str

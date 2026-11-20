@@ -22,7 +22,8 @@ class UserSettings(Base):
 
     default_limit = Column(Integer, nullable=True, default=3)
     default_weeks = Column(Integer, nullable=True, default=2)
-
+    source_configs = Column(JSON, nullable=True, default=dict)
+    
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

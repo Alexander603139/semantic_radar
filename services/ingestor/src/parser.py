@@ -432,15 +432,17 @@ async def get_article_links_from_rss(source_url: str, client: httpx.AsyncClient)
             continue
     return []
 
-async def get_article_links_from_html(source_url: str, client: httpx.AsyncClient) -> List[str]:
-    # 1. Сначала пробуем стандартный fetch_html (httpx, при ошибке — playwright)
-    html_content = await fetch_html(source_url, client)
-    if not html_content:
-        # Если совсем ничего нет, пробуем playwright принудительно
-        logger.info(f"    fetch_html не дал результат, пробуем playwright для главной {source_url}")
+async def get_article_links_from_html(source_url: str, client: httpx.AsyncClient, force_js: bool = False) -> List[str]:
+    if force_js:
+        logger.info(f"    Принудительный Playwright для {source_url}")
         html_content = await fetch_html_playwright(source_url)
+    else:
+        html_content = await fetch_html(source_url, client)
         if not html_content:
-            return []
+            html_content = await fetch_html_playwright(source_url)
+    
+    if not html_content:
+        return []
 
     # 2. Извлекаем ссылки из HTML
     tree = lxml_html.fromstring(html_content)
@@ -484,12 +486,35 @@ async def get_article_links(source_url: str, client: httpx.AsyncClient) -> List[
         return links
     return await get_article_links_from_html(source_url, client)
 
+def generate_pattern_from_example(example_url: str) -> str:
+    import re
+    pattern = re.escape(example_url)
+    return re.sub(r'\d', r'\\d+', pattern)
+
 # --------------------- Основные функция для источника ---------------------
 
-async def collect_links_from_source(source_url: str, limit: int, stats: dict) -> List[str]:
-    """Только собирает ссылки на статьи с одного источника."""
-    logger.info(f"\nСбор ссылок: {source_url}")
+async def collect_links_from_source(source_url: str, limit: int, stats: dict, config: dict = None) -> List[str]:
+    config = config or {}
+    logger.info(f"\nСбор ссылок: {source_url} (кастомная настройка: {'Да' if config else 'Нет'})")
     async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
+        
+        if config.get("rss_url"):
+            rss_url = config["rss_url"]
+            try:
+                resp = await client.get(rss_url, timeout=10.0)
+                if resp.status_code == 200:
+                    root = etree.fromstring(resp.content)
+                    links = [item.find('link').text for item in root.xpath('//item') if item.find('link') is not None]
+                    if links:
+                        logger.info(f"    Кастомный RSS найден: {rss_url}, ссылок: {len(links)}")
+                        stats["fetch_method"] = "rss"
+                        stats["links_rss"] = len(links)
+                        stats["links_total"] = len(links)
+                        stats["links_used"] = min(len(links), limit)
+                        return links[:limit]
+            except Exception as e:
+                logger.warning(f"    Ошибка чтения кастомного RSS {rss_url}: {e}")
+
         rss_links = await get_article_links_from_rss(source_url, client)
         stats["links_rss"] = len(rss_links)
 
@@ -498,7 +523,19 @@ async def collect_links_from_source(source_url: str, limit: int, stats: dict) ->
             links = rss_links
         else:
             stats["fetch_method"] = "html"
-            links = await get_article_links_from_html(source_url, client)
+            global ARTICLE_URL_PATTERNS
+            original_patterns = list(ARTICLE_URL_PATTERNS)
+            
+            if config.get("example_url"):
+                custom_pattern = generate_pattern_from_example(config["example_url"])
+                ARTICLE_URL_PATTERNS.append(custom_pattern)
+                logger.info(f"    Добавлен кастомный паттерн: {custom_pattern}")
+            
+            try:
+                links = await get_article_links_from_html(source_url, client, force_js=config.get("requires_js", False))
+            finally:
+                ARTICLE_URL_PATTERNS = original_patterns
+            
             stats["links_html"] = len(links)
 
         stats["links_total"] = len(links)
