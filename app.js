@@ -419,7 +419,7 @@ async function loadSources() {
 // ---------- ЗДОРОВЬЕ ИСТОЧНИКОВ ----------
 async function loadSourceHealth() {
     const container = document.getElementById('sourceHealthContainer');
-    if (!container) return; // Защита
+    if (!container) return; 
     container.innerHTML = '<p class="text-muted">⏳ Загрузка...</p>';
     
     try {
@@ -431,7 +431,16 @@ async function loadSourceHealth() {
             container.innerHTML = '<p class="text-muted">Нет данных за последние 7 дней.</p>';
             return;
         }
-        
+
+        // ПОЛУЧАЕМ ТЕКУЩИЙ СПИСОК САЙТОВ, ЧТОБЫ ФИЛЬТРОВАТЬ
+        const currentSourcesText = document.getElementById('sourcesTextarea').value;
+        const currentDomains = currentSourcesText.split('\n')
+            .map(s => s.trim())
+            .filter(s => s)
+            .map(s => {
+                try { return new URL(s).hostname; } catch { return s; }
+            });
+
         let html = `<div class="table-wrap"><table>
             <thead><tr>
                 <th>Источник</th>
@@ -442,7 +451,12 @@ async function loadSourceHealth() {
                 <th>Последний запуск</th>
             </tr></thead><tbody>`;
             
+        let rowsAdded = 0;
         for (const s of data) {
+            // ФИЛЬТРУЕМ: показываем только те, что есть в текущем списке
+            if (!currentDomains.includes(s.source_name)) continue;
+
+            rowsAdded++;
             let statusDot = '<span class="dot green"></span> OK';
             if (s.total_errors > 0) statusDot = '<span class="dot red"></span> Ошибки';
             else if (s.total_parsed === 0) statusDot = '<span class="dot gray"></span> Пусто';
@@ -458,6 +472,12 @@ async function loadSourceHealth() {
                 <td>${lastRun}</td>
             </tr>`;
         }
+        
+        if (rowsAdded === 0) {
+            container.innerHTML = '<p class="text-muted">Нет статистики для активных источников.</p>';
+            return;
+        }
+
         html += `</tbody></table></div>`;
         container.innerHTML = html;
         
